@@ -1,3 +1,12 @@
+# Cyber-Operator 0.6.0 — 2026-10-12
+
+- Add idempotent activity publication with optional linked attempts, tasks and
+  findings on the existing recoverable transaction journal.
+- Bound complete briefs by bytes, preserve scope/stop configuration, identify
+  omissions and support caller-supplied exact token counters.
+- Record optional explicit AI session metadata and response references.
+- Add the truthful `cyber-provenance record` alias; retain `run` compatibility.
+
 # Cyber-Operator 0.5.0 — 2026-10-12
 
 - Added versioned application/service/endpoint assets and many-to-many objectives.

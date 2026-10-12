@@ -2259,7 +2259,7 @@ def parser() -> argparse.ArgumentParser:
     adjudication.add_argument(
         "--ack-reviewed-false-positives", action="store_true"
     )
-    run = commands.add_parser("run", help="capture one exact execution receipt")
+    run = commands.add_parser("record", aliases=["run"], help="record a supplied execution receipt; does not execute commands")
     run.add_argument("--workspace", default=str(DEFAULT_COLLECTION))
     run.add_argument("--step-id", required=True)
     run.add_argument("--record", required=True)
@@ -2329,7 +2329,7 @@ def main(argv: list[str] | None = None, now: datetime | None = None) -> int:
                     f"sha256:{match['field_sha256']}"
                 )
             return 0
-        if args.command == "run":
+        if args.command in {"run", "record"}:
             record = capture_run(
                 workspace,
                 args.step_id,

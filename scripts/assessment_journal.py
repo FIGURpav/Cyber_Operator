@@ -18,7 +18,7 @@ else:
 
 LEDGER = 'assessment_events.jsonl'
 MAX_BYTES = 32 * 1024 * 1024
-KINDS = {'decision':'DEC','asset':'AST','objective':'OBJ','finding':'FND','activity':'ACT','relationship':'REL','retention':'RET'}
+KINDS = {'decision':'DEC','asset':'AST','objective':'OBJ','finding':'FND','activity':'ACT','relationship':'REL','retention':'RET','ai-session':'AIS'}
 FIELDS = {'schema_version','sequence','entity_kind','entity_id','entity_revision','actor','reason','created_at_utc','configuration','instance_id','lifecycle_epoch','data','previous_sha256','event_sha256'}
 
 

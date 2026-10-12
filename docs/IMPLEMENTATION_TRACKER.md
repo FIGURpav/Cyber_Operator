@@ -10,7 +10,7 @@ stable. Migration never rehashes an existing event history.
 | R0: truthful interfaces and reproducible baseline | 0.3.2 | Complete | 1,334 tests and 23 subtests passed; Ruff and clean release checks passed |
 | R1: resumable intake and common review contract | 0.4.0 | Complete | 1,354 tests and 23 subtests passed; Ruff and clean release checks passed |
 | R2: assets, findings, objectives and report | 0.5.0 | Complete | 1,366 tests and 23 subtests passed; Ruff and clean release checks passed |
-| R3: activity recording and bounded context | 0.6.0 | Pending | Atomic linked records, recovery, context budget |
+| R3: activity recording and bounded context | 0.6.0 | Complete | 1,375 tests and 23 subtests passed; lint and release checks passed |
 | R4: secret boundary and repeatable deployment | 0.7.0 | Pending | Provider migration, optional modules, install/upgrade verification |
 
 ## Regression observations to turn into acceptance cases
