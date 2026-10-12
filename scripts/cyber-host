@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+from host_identity import main
+
+raise SystemExit(main())

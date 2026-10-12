@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+from structured_state import local_artifact_main
+
+raise SystemExit(local_artifact_main())

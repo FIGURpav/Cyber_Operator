@@ -1,0 +1,5 @@
+# Keep Python and executable shell wrappers usable after a Windows checkout.
+*.py text eol=lf
+*.sh text eol=lf
+scripts/cyber-* text eol=lf
+*.code-workspace text eol=lf

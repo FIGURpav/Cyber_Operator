@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""Checkpoint create/verify and reviewed restore lifecycle."""
+import sys
+
+if len(sys.argv) > 1 and sys.argv[1] in {"restore", "activate", "resume"}:
+    from restore_checkpoint import main
+else:
+    from create_checkpoint import main
+
+raise SystemExit(main())

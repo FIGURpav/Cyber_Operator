@@ -1,0 +1,6 @@
+# Copy outside the repository and set CYBER_CONFIG to its absolute path.
+# Environment variables override these values. Paths must be absolute.
+[paths]
+workspace_root = "/srv/cyber-operator/workspaces"
+source_ro = "/srv/cyber-operator/source-ro"
+source_rw = "/srv/cyber-operator/source"

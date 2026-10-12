@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+from structured_state import work_main
+
+raise SystemExit(work_main())

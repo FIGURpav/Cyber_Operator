@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+from structured_state import finding_main
+
+raise SystemExit(finding_main())
