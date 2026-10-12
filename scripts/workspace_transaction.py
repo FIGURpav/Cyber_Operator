@@ -27,7 +27,7 @@ DIRECTORY = Path("private/transactions")
 ID_RE = re.compile(r"^TXN-[0-9a-f]{32}$")
 MAX_PLAN = 4 * 1024 * 1024
 MAX_PAYLOAD = 64 * 1024 * 1024
-KINDS = {"evidence", "screenshot", "host-merge", "engagement-config", "assessment-record"}
+KINDS = {"evidence", "screenshot", "host-merge", "engagement-config", "assessment-record", "assessment-report"}
 _HELD: contextvars.ContextVar[tuple[Path, ...]] = contextvars.ContextVar("transaction_locks", default=())
 
 
@@ -165,6 +165,8 @@ def _allowed(kind: str, operation: dict[str, Any]) -> bool:
         )
     if kind == 'assessment-record':
         return action == 'append' and path == 'assessment_events.jsonl'
+    if kind == 'assessment-report':
+        return action == 'create' and bool(re.fullmatch(r'report/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:html|json|svg)',path))
     if kind == "evidence":
         return action == "create" and path.startswith("evidence/")
     if kind == "screenshot":

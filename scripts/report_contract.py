@@ -978,6 +978,15 @@ def validate_manifest(
     *,
     context: ValidationContext | None = None,
 ) -> dict[str, Any]:
+    if manifest.get('schema_version')=='3.0':
+        if __package__:
+            from . import assessment_reporting
+        else:
+            import assessment_reporting
+        try:
+            return assessment_reporting.validate(workspace,manifest)
+        except (ValueError,KeyError,TypeError) as exc:
+            raise ReportContractError(str(exc)) from exc
     active_context = _validation_context(workspace, context)
     bound = manifest.get("schema_version") == "2.1"
     if set(manifest) != (MANIFEST_FIELDS | {"configuration"} if bound else MANIFEST_FIELDS) or manifest.get("schema_version") not in {"2.0", "2.1"}:
@@ -1894,7 +1903,7 @@ def derive_screenshot_requirements(workspace: Path) -> list[ScreenshotRequiremen
             for state in step_states.values()
             if state["plan"]["checkpoint_class"] in {"objective", "admin_proof"}
         }
-        for target in manifest["assessment_objectives"]:
+        for target in manifest.get("assessment_objectives",[]):
             if target["host_id"] in objective_hosts:
                 continue
             requirements.append(
@@ -1929,6 +1938,14 @@ def evaluate_contract(workspace: Path) -> ContractReadiness:
     blockers: list[str] = []
     context = ValidationContext(workspace)
     manifest = load_manifest(workspace, context=context)
+    if manifest and manifest['schema_version']=='3.0':
+        if __package__:
+            from . import assessment_reporting
+        else:
+            import assessment_reporting
+        result=assessment_reporting.readiness(workspace,manifest)
+        return ContractReadiness(content_ready=result['ready'],credential_ready=not any(item.startswith('token:') for item in result['blockers']),
+                                 query_appendix_ready=True,blockers=tuple(result['blockers']),manifest_targets=result['objectives'],active_steps=0)
     _, all_states = load_steps(workspace, context=context)
     states = _effective_step_states(all_states)
     if manifest is None:

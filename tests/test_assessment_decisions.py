@@ -135,3 +135,13 @@ def test_status_keeps_write_readiness_separate_from_review(tmp_path):
     assert result['questions']
     assert result['review_choices']['artifact_handling']['value'] == 'no-download'
     assert not result['decisions']['configuration_review_implies_activity_approval']
+
+
+def test_real_clock_review_receipt_matches_its_event(tmp_path):
+    root = prepared(tmp_path)
+    result = decisions.change(root,'proposed',proposal=payload(),actor='OP-SYNTHETIC',reason='Real clock metadata test',
+                              expected_revision=1,expected_event=0,apply=True)
+    approved = decisions.change(root,'approved',decision_id=result['record']['entity_id'],actor='RV-SYNTHETIC',
+                                reason='Explicit synthetic review',expected_revision=1,expected_event=1,apply=True)
+    assert len(decisions.decision_states(root)) == 1
+    assert approved['record']['data']['review']['created_at_utc'] == approved['record']['created_at_utc']

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
 from structured_state import finding_main
+import sys
 
+if len(sys.argv) > 1 and sys.argv[1] in {'record','revise','review','list','history'}:
+    from assessment_model import main
+    raise SystemExit(main(['finding',*sys.argv[1:]]))
 raise SystemExit(finding_main())

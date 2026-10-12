@@ -53,8 +53,16 @@ def snapshot(root, *, report=False, now=None):
     if manifest and manifest['schema_version'] == '2.1':
         result['report']['configuration_snapshot_current'] = configuration_report.is_current(root,manifest)
     if report:
-        readiness = report_contract.evaluate_contract(root)
-        result['report'].update(readiness='ready' if not readiness.blockers else 'incomplete',blockers=list(readiness.blockers))
+        if any(event['entity_kind']=='objective' for event in assessment_journal.load(root)):
+            if __package__:
+                from . import assessment_reporting
+            else:
+                import assessment_reporting
+            readiness = assessment_reporting.readiness(root)
+            result['report'].update(readiness='ready' if readiness['ready'] else 'incomplete',blockers=readiness['blockers'],contract='findings')
+        else:
+            readiness = report_contract.evaluate_contract(root)
+            result['report'].update(readiness='ready' if not readiness.blockers else 'incomplete',blockers=list(readiness.blockers))
     if draft['missing']:
         result['next_steps'].append('Collect missing answers with cyber-engagement answer; review template defaults separately.')
     elif draft['event_sequence'] is not None:

@@ -131,6 +131,7 @@ def decision_states(root):
 def change(root, event, *, actor, reason, expected_revision, expected_event,
            proposal=None, decision_id=None, approval_reference=None, apply=False, now=None):
     root = Path(root).absolute()
+    now = config._moment(config._stamp(now))
     if apply:
         with workspace_transaction.write_guard(root):
             preview = change(root,event,actor=actor,reason=reason,expected_revision=expected_revision,

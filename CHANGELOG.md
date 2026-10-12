@@ -1,3 +1,15 @@
+# Cyber-Operator 0.5.0 — 2026-10-12
+
+- Added versioned application/service/endpoint assets and many-to-many objectives.
+- Added independent finding confidence, remediation, retest and risk-acceptance
+  dimensions with retained revisions and exact human review records.
+- Added configuration-bound schema-3.0 report snapshots and local HTML reports;
+  incomplete coverage is represented explicitly without invented loot or success.
+- Added evidence-backed relationship records and deterministic SVG graph export,
+  including compatible retained operational paths and escaped labels.
+- Included managed finding/objective revisions in close previews.
+- Fixed real-clock decision review timestamps to use one event timestamp.
+
 # Cyber-Operator 0.4.0 — 2026-10-12
 
 - Added resumable draft answers, explicit submission and draft discard without

@@ -265,6 +265,29 @@ def _summaries(root: Path) -> tuple[dict[str, int], dict[str, int]]:
     except report_contract.ReportContractError:
         report = Counter({"unavailable": 1})
     work = Counter(item["state"] for item in structured_state.work_item_states(root).values())
+    if (root / 'assessment_events.jsonl').exists():
+        if __package__:
+            from . import assessment_model, assessment_reporting
+        else:
+            import assessment_model
+            import assessment_reporting
+        entities = assessment_model.states(root)
+        for event in entities.values():
+            data = event['data']
+            if event['entity_kind']=='finding':
+                report['finding_'+data['confidence']] += 1
+                report['remediation_'+data['remediation_status']] += 1
+                report['retest_'+data['retest_status']] += 1
+            elif event['entity_kind']=='objective':
+                work['objective_'+data['status']] += 1
+        if any(event['entity_kind']=='objective' for event in entities.values()):
+            try:
+                readiness = assessment_reporting.readiness(root)
+                report['content_ready'] = int(readiness['ready'])
+                report['readiness_blockers'] = len(readiness['blockers'])
+            except (ValueError,RuntimeError):
+                report['content_ready'] = 0
+                report['readiness_blockers'] += 1
     return dict(sorted(report.items())), dict(sorted(work.items()))
 
 
@@ -302,6 +325,14 @@ def build_close_plan(
         view = (("unavailable", "malformed"),)
         projection_source_sha256 = hashlib.sha256(b"unavailable").hexdigest()
     report, work = _summaries(root)
+    if (root / 'assessment_events.jsonl').exists():
+        if __package__:
+            from . import assessment_journal
+        else:
+            import assessment_journal
+        events = assessment_journal.load(root)
+        source = events[-1]['event_sha256'] if events else 'empty'
+        projection_source_sha256 = hashlib.sha256((projection_source_sha256 + ':' + source).encode()).hexdigest()
     standing_id, standing_status = _closable_standing(root, moment)
     payload = {
         "schema_version": "1.0", "workspace_instance_id": _instance(root),
