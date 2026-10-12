@@ -1,5 +1,9 @@
 # Operator intake
 
+For resumable answers, reviewed activity records and configuration-bound report
+metadata, follow [Managed workflow](MANAGED_WORKFLOW.md). Persist answers with
+`cyber-engagement answer`; do not keep the only cumulative draft in chat memory.
+
 For new team assessments, use the versioned model in
 [Configuration](CONFIGURATION.md). `cyber-init` accepts partial facts or a complete
 schema-1.0 definition and creates `engagement.json`, `engagement_events.jsonl` and

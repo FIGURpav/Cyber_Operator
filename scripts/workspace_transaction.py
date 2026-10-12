@@ -27,7 +27,7 @@ DIRECTORY = Path("private/transactions")
 ID_RE = re.compile(r"^TXN-[0-9a-f]{32}$")
 MAX_PLAN = 4 * 1024 * 1024
 MAX_PAYLOAD = 64 * 1024 * 1024
-KINDS = {"evidence", "screenshot", "host-merge", "engagement-config"}
+KINDS = {"evidence", "screenshot", "host-merge", "engagement-config", "assessment-record"}
 _HELD: contextvars.ContextVar[tuple[Path, ...]] = contextvars.ContextVar("transaction_locks", default=())
 
 
@@ -163,6 +163,8 @@ def _allowed(kind: str, operation: dict[str, Any]) -> bool:
             or (action in {"create", "replace"} and path == "engagement.json")
             or (action == "replace" and path == "TASK_CONTEXT.md")
         )
+    if kind == 'assessment-record':
+        return action == 'append' and path == 'assessment_events.jsonl'
     if kind == "evidence":
         return action == "create" and path.startswith("evidence/")
     if kind == "screenshot":
@@ -301,6 +303,12 @@ def _validate_payload_contract(directory: Path, plan: dict[str, Any]) -> None:
         record = ledger_io.loads_json(payload)
         if not isinstance(record, dict):
             raise TransactionError("transaction ledger record must be an object")
+        if plan['kind'] == 'assessment-record':
+            if __package__:
+                from . import assessment_journal
+            else:
+                import assessment_journal
+            assessment_journal.validate_event(record)
         if plan["kind"] == "engagement-config":
             if __package__:
                 from . import engagement_config

@@ -320,15 +320,15 @@ def _event(kind, value, records, actor, reason, reference=None, proposal=None, i
         _text(reference, "approval reference")
     previous = next((event["definition"] for event in reversed(records) if event["event"] in {"created", "approved"}), None)
     item = {
-        "schema_version": "1.0", "sequence": len(records) + 1, "event": kind,
+        "schema_version": "1.1" if kind in {"drafted", "draft-discarded"} else "1.0", "sequence": len(records) + 1, "event": kind,
         "created_at_utc": _stamp(now), "actor": actor, "reason": reason,
         "approval_reference": reference, "proposal_sequence": proposal,
         "base_revision": records[-1]["current_revision"] if records else 0,
         "current_revision": value["revision"] if kind in {"created", "approved"} else records[-1]["current_revision"],
-        "definition": value if kind in {"created", "proposed", "approved"} else None,
+        "definition": value if kind in {"created", "proposed", "approved", "drafted"} else None,
         "definition_sha256": digest(value), "instance_id": instance, "lifecycle_epoch": epoch,
         "previous_sha256": records[-1]["event_sha256"] if records else None,
-        "changes": differences(previous, value) if previous and kind in {"proposed", "approved"} else [],
+        "changes": differences(previous, value) if previous and kind in {"proposed", "approved", "drafted"} else [],
     }
     item["event_sha256"] = digest(item)
     return item
@@ -357,18 +357,20 @@ def load(root, *, check_context=True):
         item = ledger_io.loads_json(line)
         _keys(item, event_fields, "configuration event")
         unhashed = {key: val for key, val in item.items() if key != "event_sha256"}
-        if item["schema_version"] != "1.0" or type(item["sequence"]) is not int or item["sequence"] != len(records) + 1 or item["event_sha256"] != digest(unhashed) or item["previous_sha256"] != (records[-1]["event_sha256"] if records else None):
+        if item["schema_version"] not in {"1.0", "1.1"} or type(item["sequence"]) is not int or item["sequence"] != len(records) + 1 or item["event_sha256"] != digest(unhashed) or item["previous_sha256"] != (records[-1]["event_sha256"] if records else None):
             raise ConfigurationError("configuration history sequence or hash chain is invalid")
         _moment(item["created_at_utc"])
         _text(item["actor"], "event actor")
         _text(item["reason"], "event reason")
         kind = item["event"]
-        if kind not in {"created", "proposed", "approved", "paused", "revoked", "rejected"}:
+        if kind not in {"created", "proposed", "approved", "paused", "revoked", "rejected", "drafted", "draft-discarded"}:
             raise ConfigurationError("unknown configuration event")
+        if kind in {"drafted", "draft-discarded"} and item["schema_version"] != "1.1":
+            raise ConfigurationError("draft events require schema 1.1")
         if (not records) != (kind == "created") or item["base_revision"] != (effective["revision"] if effective else 0):
             raise ConfigurationError("invalid configuration revision history")
         candidate = item["definition"]
-        if kind in {"created", "proposed", "approved"}:
+        if kind in {"created", "proposed", "approved", "drafted"}:
             validate(candidate)
             if digest(candidate) != item["definition_sha256"]:
                 raise ConfigurationError("configuration snapshot hash mismatch")
@@ -376,14 +378,14 @@ def load(root, *, check_context=True):
                 raise ConfigurationError("configuration identity or policy snapshot changed")
         elif candidate is not None or item["definition_sha256"] != digest(effective):
             raise ConfigurationError("invalid configuration control event")
-        expected_changes = differences(effective, candidate) if effective and kind in {"proposed", "approved"} else []
+        expected_changes = differences(effective, candidate) if effective and kind in {"proposed", "approved", "drafted"} else []
         if item["changes"] != expected_changes:
             raise ConfigurationError("configuration diff does not match its snapshots")
         if kind == "created":
             if candidate["revision"] != 1:
                 raise ConfigurationError("initial configuration revision must be 1")
             effective = candidate
-        elif kind == "proposed":
+        elif kind in {"proposed", "drafted"}:
             if candidate["revision"] != effective["revision"] + 1:
                 raise ConfigurationError("proposal must advance one revision")
         elif kind == "approved":
@@ -442,6 +444,22 @@ def differences(before, after):
     return [{"field": key, "before": before[key], "after": after[key], "origin_before": before["origins"][key], "origin_after": after["origins"][key]} for key in sorted(SETTINGS) if before[key] != after[key] or before["origins"][key] != after["origins"][key]]
 
 
+def draft_state(root, loaded=None):
+    """Return resumable answers, never treating them as effective policy."""
+    loaded = loaded or load(root)
+    if loaded is None:
+        raise ConfigurationError("workspace has no unified configuration")
+    current = loaded["definition"]
+    instance, epoch, _, _ = _environment(Path(root))
+    for event in reversed(loaded["events"]):
+        if event["event"] in {"approved", "draft-discarded"}:
+            break
+        if (event["event"] == "drafted" and event["base_revision"] == current["revision"]
+                and event["instance_id"] == instance and event["lifecycle_epoch"] == epoch):
+            return {"definition": event["definition"], "event_sequence": event["sequence"], "missing": missing(event["definition"])}
+    return {"definition": current, "event_sequence": None, "missing": missing(current)}
+
+
 def status(root, *, now=None):
     loaded = load(root)
     if loaded is None:
@@ -467,7 +485,8 @@ def status(root, *, now=None):
         state, reason = "ready-for-review", "Fresh review required after restore or lifecycle change"
     rejected = {event["proposal_sequence"] for event in records if event["event"] == "rejected"}
     pending = [event["sequence"] for event in records if event["event"] == "proposed" and event["base_revision"] == value["revision"] and event["sequence"] not in rejected]
-    return {"status": state, "reason": reason, "revision": value["revision"], "event_sequence": len(records), "configuration_sha256": digest(value), "configuration_approved": approved and state in {"active", "scheduled"}, "missing": missing(value), "scope_reference_state": scope_reference_state(value), "pending_proposals": pending, "target_action_authorization": "not provided by configuration"}
+    working = draft_state(root, loaded)
+    return {"status": state, "reason": reason, "revision": value["revision"], "event_sequence": len(records), "configuration_sha256": digest(value), "configuration_approved": approved and state in {"active", "scheduled"}, "missing": missing(value), "draft": {"event_sequence": working["event_sequence"], "missing": working["missing"], "ready_to_submit": working["event_sequence"] is not None and not working["missing"]}, "scope_reference_state": scope_reference_state(value), "pending_proposals": pending, "target_action_authorization": "not provided by configuration"}
 
 
 def _cas(loaded, expected_revision, expected_event):
@@ -487,13 +506,13 @@ def _commit(root, event, value=None):
     return transaction.commit()
 
 
-def change(root, *, event, actor, reason, expected_revision, expected_event, changes=None, basis="operator-preference", basis_reference=None, approval_reference=None, proposal_sequence=None, apply=False, now=None):
+def change(root, *, event, actor, reason, expected_revision, expected_event, changes=None, basis="operator-preference", basis_reference=None, approval_reference=None, proposal_sequence=None, use_draft=False, apply=False, now=None):
     """Preview or commit a metadata proposal, human review, pause or revocation."""
     root = Path(root).absolute()
     # Preview remains read-only; apply rechecks the same preconditions under the writer guard.
     if apply:
         with workspace_transaction.write_guard(root):
-            result = change(root, event=event, actor=actor, reason=reason, expected_revision=expected_revision, expected_event=expected_event, changes=changes, basis=basis, basis_reference=basis_reference, approval_reference=approval_reference, proposal_sequence=proposal_sequence, now=now)
+            result = change(root, event=event, actor=actor, reason=reason, expected_revision=expected_revision, expected_event=expected_event, changes=changes, basis=basis, basis_reference=basis_reference, approval_reference=approval_reference, proposal_sequence=proposal_sequence, use_draft=use_draft, now=now)
             _commit(root, result["record"], result["definition"] if event == "approved" else None)
             result["mode"] = "APPLY"
             return result
@@ -506,18 +525,29 @@ def change(root, *, event, actor, reason, expected_revision, expected_event, cha
     instance, epoch, closed, inactive = _environment(root)
     if closed or inactive:
         raise ConfigurationError("configuration changes require an open, activated workspace")
-    if event == "proposed":
+    if event == "proposed" and use_draft:
+        working = draft_state(root, loaded)
+        if working["event_sequence"] is None:
+            raise ConfigurationError("no saved draft answers to submit")
+        value = copy.deepcopy(working["definition"])
+        if missing(value):
+            raise ConfigurationError("complete the draft answers before submitting for review")
+        if not differences(current, value):
+            raise ConfigurationError("draft has no changes")
+    elif event in {"proposed", "drafted"}:
+        if event == "drafted":
+            value = copy.deepcopy(draft_state(root, loaded)["definition"])
         if not isinstance(changes, dict) or not changes or not set(changes) <= SETTINGS - {"name"}:
             raise ConfigurationError("proposal must contain supported mutable settings")
         if basis not in {"operator-preference", "engagement-restriction"}:
             raise ConfigurationError("proposal origin must identify preference or engagement restriction")
         reference = _text(basis_reference if basis == "engagement-restriction" else basis_reference or reason, "change basis")
         for key, setting in changes.items():
-            if current["origins"][key]["kind"] == "engagement-restriction" and basis != "engagement-restriction":
+            if value["origins"][key]["kind"] == "engagement-restriction" and basis != "engagement-restriction":
                 raise ConfigurationError("an engagement restriction cannot be downgraded to a preference")
             value[key] = optional_reference(setting, key) if key == "scope_reference" else copy.deepcopy(setting)
             value["origins"][key] = {"kind": basis, "reference": reference}
-        value["revision"] += 1
+        value["revision"] = current["revision"] + 1
         validate(value)
         if not differences(current, value):
             raise ConfigurationError("proposal has no changes")
@@ -540,6 +570,10 @@ def change(root, *, event, actor, reason, expected_revision, expected_event, cha
             raise ConfigurationError("cannot approve an expired assessment window")
         if approval_reference is None:
             approval_reference = f"local-review:{value['engagement_id']}:{len(records) + 1}"
+    elif event == "draft-discarded":
+        working = draft_state(root, loaded)
+        if actor not in {current["operator_id"], current["reviewer_id"], working["definition"]["operator_id"], working["definition"]["reviewer_id"]}:
+            raise ConfigurationError("discard requires a configured operator or reviewer")
     elif event in {"paused", "revoked", "rejected"}:
         if actor not in {current["operator_id"], current["reviewer_id"]}:
             raise ConfigurationError("control decisions require a configured operator or reviewer")
@@ -549,7 +583,7 @@ def change(root, *, event, actor, reason, expected_revision, expected_event, cha
                 raise ConfigurationError("rejection requires a current pending proposal")
     else:
         raise ConfigurationError("unsupported configuration change")
-    if event in {"proposed", "approved"}:
+    if event in {"proposed", "approved", "drafted"}:
         render_context(_read(root / "TASK_CONTEXT.md", 64 * 1024).decode("utf-8"), value)
     record = _event(event, value, records, actor, reason, approval_reference, proposal_sequence, instance, epoch, now)
     return {"mode": "PREVIEW", "record": record, "definition": value, "changes": differences(current, value), "missing": missing(value)}
@@ -624,16 +658,16 @@ def main(argv=None):
     migrate.add_argument("--reason", required=True)
     migrate.add_argument("--expected-context-sha256")
     migrate.add_argument("--apply", action="store_true")
-    for command in ("show", "status", "history", "questions", "propose", "approve", "pause", "revoke", "reject"):
+    for command in ("show", "status", "history", "questions", "draft-show", "answer", "submit", "discard-draft", "propose", "approve", "pause", "revoke", "reject"):
         action = sub.add_parser(command)
         action.add_argument("--workspace", type=Path, required=True)
-        if command in {"propose", "approve", "pause", "revoke", "reject"}:
+        if command in {"answer", "submit", "discard-draft", "propose", "approve", "pause", "revoke", "reject"}:
             action.add_argument("--actor", required=True)
             action.add_argument("--reason", required=True)
             action.add_argument("--expected-revision", type=int, required=True)
             action.add_argument("--expected-event", type=int, required=True)
             action.add_argument("--apply", action="store_true")
-        if command == "propose":
+        if command in {"propose", "answer"}:
             action.add_argument("--input", type=Path, required=True, help="JSON object containing changed settings only")
             action.add_argument("--basis", choices=("operator-preference", "engagement-restriction"), required=True)
             action.add_argument("--basis-reference", required=True)
@@ -651,13 +685,14 @@ def main(argv=None):
             result = adopt(args.workspace, read_input(args.input), actor=args.actor, reason=args.reason, expected_context_sha256=args.expected_context_sha256, apply=args.apply)
         elif args.command == "status":
             result = status(args.workspace)
-        elif args.command in {"show", "history", "questions"}:
+        elif args.command in {"show", "history", "questions", "draft-show"}:
             loaded = load(args.workspace)
             if loaded is None:
                 raise ConfigurationError("workspace has no unified configuration")
-            result = {"show": loaded["definition"], "history": loaded["events"], "questions": missing(loaded["definition"])}[args.command]
+            working = draft_state(args.workspace, loaded)
+            result = {"show": loaded["definition"], "history": loaded["events"], "questions": working["missing"], "draft-show": working}[args.command]
         else:
-            result = change(args.workspace, event={"propose": "proposed", "approve": "approved", "pause": "paused", "revoke": "revoked", "reject": "rejected"}[args.command], actor=args.actor, reason=args.reason, expected_revision=args.expected_revision, expected_event=args.expected_event, changes=read_input(args.input) if args.command == "propose" else None, basis=getattr(args, "basis", "operator-preference"), basis_reference=getattr(args, "basis_reference", None), approval_reference=getattr(args, "approval_reference", None), proposal_sequence=getattr(args, "proposal_sequence", None), apply=args.apply)
+            result = change(args.workspace, event={"answer": "drafted", "submit": "proposed", "discard-draft": "draft-discarded", "propose": "proposed", "approve": "approved", "pause": "paused", "revoke": "revoked", "reject": "rejected"}[args.command], actor=args.actor, reason=args.reason, expected_revision=args.expected_revision, expected_event=args.expected_event, changes=read_input(args.input) if args.command in {"propose", "answer"} else None, basis=getattr(args, "basis", "operator-preference"), basis_reference=getattr(args, "basis_reference", None), approval_reference=getattr(args, "approval_reference", None), proposal_sequence=getattr(args, "proposal_sequence", None), use_draft=args.command == "submit", apply=args.apply)
         print(json.dumps(result, indent=2))
         return 0
     except (OSError, ValueError, RuntimeError) as exc:

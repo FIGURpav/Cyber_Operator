@@ -1,3 +1,15 @@
+# Cyber-Operator 0.4.0 — 2026-10-12
+
+- Added resumable draft answers, explicit submission and draft discard without
+  changing effective settings before review. New draft events use schema 1.1.
+- Added configuration-bound report manifest schema 2.1, optional external scope
+  references and multiple distinct objectives on a host; retained old readers.
+- Added reviewed activity decisions in a typed, hashed assessment journal with
+  exact sequence checks, transaction recovery and read-only AUTH compatibility.
+- Unified impact ranking while retaining historical `moderate` records unchanged.
+- Added a consolidated `cyber-status` with separate technical, configuration,
+  decision and reporting state. No executor or shared-user service was added.
+
 # Cyber-Operator 0.3.2 — 2026-10-12
 
 - Retained release 0.3.1 and established local source history for staged changes.

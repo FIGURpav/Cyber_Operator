@@ -979,7 +979,8 @@ def validate_manifest(
     context: ValidationContext | None = None,
 ) -> dict[str, Any]:
     active_context = _validation_context(workspace, context)
-    if set(manifest) != MANIFEST_FIELDS or manifest.get("schema_version") != "2.0":
+    bound = manifest.get("schema_version") == "2.1"
+    if set(manifest) != (MANIFEST_FIELDS | {"configuration"} if bound else MANIFEST_FIELDS) or manifest.get("schema_version") not in {"2.0", "2.1"}:
         raise ReportContractError("engagement manifest has an unsupported schema")
     report_id = manifest.get("report_id")
     if not isinstance(report_id, str) or REPORT_ID_RE.fullmatch(report_id) is None:
@@ -1000,11 +1001,14 @@ def validate_manifest(
     if not isinstance(engagement["engagement_date"], str) or DATE_RE.fullmatch(engagement["engagement_date"]) is None:
         raise ReportContractError("engagement manifest engagement_date is malformed")
     _text(engagement["scope_version"], "engagement guide version", 128)
-    scope_url = _text(engagement["scope_url"], "engagement guide URL", 2048)
-    assert scope_url is not None
-    parsed = urlsplit(scope_url)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
-        raise ReportContractError("engagement guide URL must be a credential-free HTTPS URL")
+    if bound:
+        _text(engagement["scope_url"], "external scope reference", 2048, nullable=True)
+    else:
+        scope_url = _text(engagement["scope_url"], "engagement guide URL", 2048)
+        assert scope_url is not None
+        parsed = urlsplit(scope_url)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            raise ReportContractError("engagement guide URL must be a credential-free HTTPS URL")
     if not isinstance(engagement["approved_at_utc"], str) or TIMESTAMP_RE.fullmatch(engagement["approved_at_utc"]) is None:
         raise ReportContractError("engagement manifest approved_at_utc is malformed")
     hosts = active_context.known_hosts
@@ -1032,6 +1036,7 @@ def validate_manifest(
             "engagement manifest assessment_objectives must be a non-empty list"
         )
     target_hosts: set[str] = set()
+    target_pairs: set[tuple[str, str]] = set()
     loot = active_context.loot
     for target in targets:
         if not isinstance(target, dict) or set(target) != {
@@ -1043,7 +1048,7 @@ def validate_manifest(
         }:
             raise ReportContractError("engagement manifest assessment objective is malformed")
         host_id = target["host_id"]
-        if host_id not in hosts or host_id in target_hosts:
+        if host_id not in hosts or (not bound and host_id in target_hosts):
             raise ReportContractError("engagement manifest target host is unknown or duplicated")
         target_hosts.add(host_id)
         chain_id = target["chain_id"]
@@ -1057,6 +1062,10 @@ def validate_manifest(
         if category not in OBJECTIVE_CATEGORIES:
             raise ReportContractError("engagement manifest objective category is unsupported")
         _text(target["objective_name"], "target objective_name", 128)
+        pair = (host_id, target["objective_name"])
+        if pair in target_pairs:
+            raise ReportContractError("engagement manifest duplicates an objective on the same host")
+        target_pairs.add(pair)
         loot_id = target["objective_loot_id"]
         if loot_id is not None and (
             not isinstance(loot_id, str)
@@ -1073,6 +1082,15 @@ def validate_manifest(
                 raise ReportContractError(
                     "engagement manifest objective proof does not match target host and name"
                 )
+    if bound:
+        if __package__:
+            from . import configuration_report
+        else:
+            import configuration_report
+        try:
+            configuration_report.validate_binding(workspace, manifest)
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ReportContractError(str(exc)) from exc
     reject_secrets(workspace, manifest, context=active_context)
     return manifest
 
@@ -1142,6 +1160,12 @@ def apply_manifest(
     if not isinstance(parsed, dict):
         raise ReportContractError("manifest input must contain one JSON object")
     validate_manifest(workspace, parsed)
+    if __package__:
+        from . import engagement_config
+    else:
+        import engagement_config
+    if engagement_config.is_managed(workspace) and parsed['schema_version'] == '2.0':
+        raise ReportContractError('new managed report writes require configuration-bound schema 2.1; schema 2.0 remains readable')
     normalized = (json.dumps(parsed, indent=2, ensure_ascii=False) + "\n").encode()
     destination = workspace / MANIFEST_NAME
     existed = _lexists(destination)
@@ -1923,7 +1947,7 @@ def evaluate_contract(workspace: Path) -> ContractReadiness:
             blockers.append(f"step:{state['plan']['step_id']}:{transition['event']}")
     reviewed_targets: list[str] = []
     for target in targets:
-        if any(context.same_host(target["host_id"], prior) for prior in reviewed_targets):
+        if manifest['schema_version'] == '2.0' and any(context.same_host(target["host_id"], prior) for prior in reviewed_targets):
             blockers.append(f"target:{target['host_id']}:merged-objective-target-requires-review")
         reviewed_targets.append(target["host_id"])
         host_steps = [
@@ -1978,6 +2002,13 @@ def evaluate_contract(workspace: Path) -> ContractReadiness:
         query_ready = False
     if not query_ready:
         blockers.append("queries:appendix-missing-or-stale")
+    if manifest and manifest['schema_version'] == '2.1':
+        if __package__:
+            from . import configuration_report
+        else:
+            import configuration_report
+        if not configuration_report.is_current(workspace, manifest):
+            blockers.append('configuration:report-snapshot-requires-refresh-and-review')
     try:
         if __package__:
             from . import execution_provenance

@@ -3,12 +3,12 @@
 Configuration review and activity decisions are separate records. No command in
 this product runs a target scanner, exploit, callback or remote file transfer.
 
-| Capability | Managed 0.3.2 workspace | Legacy workspace |
+| Capability | Managed 0.4.0 workspace | Legacy workspace |
 | --- | --- | --- |
 | Versioned configuration and review | Available | Explicit adoption required |
 | Evidence and observation intake | Available, subject to origin/storage rules | Available |
 | Legacy AUTH grant creation | Unavailable | Available under legacy policy |
-| Change/path records requiring AUTH | Historical readers; new grant route pending | Available with a recorded grant |
+| Change/path records requiring AUTH | Explicit reviewed decisions expose compatibility receipts | Available with a recorded grant |
 | Mermaid graph output | Existing valid records | Existing valid records |
 | Dedicated SVG output | Unavailable | Unavailable |
 | Scanner execution | Not implemented | Not implemented |

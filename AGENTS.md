@@ -17,6 +17,10 @@ There is no automatic technique progression or automatic remote-host selection.
 Use `cyber-init` and a reviewed assessment template for new team workspaces.
 `engagement.json` is authoritative; `TASK_CONTEXT.md` is a generated view.
 Read `cyber-engagement status` and `questions`; collect missing facts in small groups.
+Persist each group with `cyber-engagement answer`, using exact revision/event
+checks. `draft-show` and `questions` use accumulated answers; `show` remains the
+effective definition. Preview the complete draft, submit it, then record the
+reviewer's explicit decision. See docs/MANAGED_WORKFLOW.md and `cyber-status`.
 Show scope, exclusions, time, impact, data choices, policy boundaries and reporting.
 Identify template defaults, operator preferences and engagement restrictions with
 their basis references. Never invent another person's approval.

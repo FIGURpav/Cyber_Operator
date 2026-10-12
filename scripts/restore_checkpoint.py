@@ -85,6 +85,14 @@ def require_path_instance(path: Path) -> None:
 def require_current_authorization(workspace: Path, identifier: str) -> None:
     if historical_authorization(workspace, identifier):
         raise RestoreError("authorization is historical after restore; record a new authorization")
+    if __package__:
+        from . import assessment_decisions
+    else:
+        import assessment_decisions
+    try:
+        assessment_decisions.require_current(workspace,identifier)
+    except ValueError as exc:
+        raise RestoreError(str(exc)) from exc
 
 
 def require_current_token_validation(workspace: Path, token_state: dict[str, Any]) -> None:

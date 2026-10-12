@@ -2135,6 +2135,9 @@ def report_main(argv: list[str] | None = None) -> int:
     manifest_mode.add_argument("--preview", action="store_true")
     manifest_mode.add_argument("--apply", action="store_true")
     manifest.add_argument("--replace", action="store_true")
+    draft = subparsers.add_parser("draft-manifest", help="generate schema-2.1 metadata from the reviewed configuration")
+    _common_workspace(draft)
+    draft.add_argument("--host-id", required=True, help="registered host for the configured objectives")
     adjudication = subparsers.add_parser(
         "secret-adjudication",
         help="review exact retroactive credential-substring matches in report steps",
@@ -2172,6 +2175,15 @@ def report_main(argv: list[str] | None = None) -> int:
         if args.command_name == "check":
             return report_check(args)
         workspace = _resolve_active(Path(args.workspace))
+        if args.command_name == 'draft-manifest':
+            if __package__:
+                from . import configuration_report
+            else:
+                import configuration_report
+            candidate = configuration_report.build(workspace, args.host_id)
+            report_contract.validate_manifest(workspace, candidate)
+            print(json.dumps(candidate, indent=2))
+            return 0
         if args.command_name == "manifest":
             action = report_contract.apply_manifest(
                 workspace,

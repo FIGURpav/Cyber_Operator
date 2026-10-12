@@ -8,7 +8,7 @@ stable. Migration never rehashes an existing event history.
 | Stage | Planned release | Status | Acceptance evidence |
 | --- | --- | --- | --- |
 | R0: truthful interfaces and reproducible baseline | 0.3.2 | Complete | 1,334 tests and 23 subtests passed; Ruff and clean release checks passed |
-| R1: resumable intake and common review contract | 0.4.0 | Pending | Partial resume; None through reporting; exact reviewed changes |
+| R1: resumable intake and common review contract | 0.4.0 | Complete | 1,354 tests and 23 subtests passed; Ruff and clean release checks passed |
 | R2: assets, findings, objectives and report | 0.5.0 | Pending | Many objectives, retest, evidence graph and SVG |
 | R3: activity recording and bounded context | 0.6.0 | Pending | Atomic linked records, recovery, context budget |
 | R4: secret boundary and repeatable deployment | 0.7.0 | Pending | Provider migration, optional modules, install/upgrade verification |
@@ -28,3 +28,11 @@ stable. Migration never rehashes an existing event history.
 Each implementation stage records its source commit, release archive hash,
 focused checks and full regression results before a release tag is created.
 Local setup paths and baseline archives are intentionally outside product releases.
+
+## Operator decisions
+
+- Use a separate local Linux/WSL runtime for each operator. Controlled handoff is
+  deferred; a shared multi-user service is outside this implementation.
+- Keep a private vault inside each workspace using owner-only filesystem access,
+  without a separate password or application-layer encryption. Separate secret
+  values from ordinary metadata and retain historical private sources explicitly.

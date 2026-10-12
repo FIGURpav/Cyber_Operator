@@ -37,8 +37,9 @@ EVIDENCE_ID_RE = re.compile(r"^EVD-\d{8}T\d{12}Z$")
 CREDENTIAL_ID_RE = re.compile(r"^CRED-\d{8}T\d{12}Z$")
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$")
 
-IMPACT_LEVELS = ("low", "moderate", "high", "critical")
-IMPACT_RANK = {value: index for index, value in enumerate(IMPACT_LEVELS)}
+IMPACT_LEVELS = ("low", "medium", "high", "critical", "moderate")
+# Historical moderate records retain their bytes; both names have the same rank.
+IMPACT_RANK = {"low": 0, "medium": 1, "moderate": 1, "high": 2, "critical": 3}
 AUTHORIZATION_CATEGORIES = {
     "access-control",
     "bulk-data-access",
@@ -422,6 +423,12 @@ def _validate_authorization_record(record: dict[str, Any], source: str) -> None:
 def load_authorizations(workspace: Path) -> list[dict[str, Any]]:
     path = workspace / AUTHORIZATION_LEDGER
     records = _read_jsonl(path, missing_ok=True)
+    if (workspace / 'assessment_events.jsonl').exists():
+        if __package__:
+            from . import assessment_decisions
+        else:
+            import assessment_decisions
+        records.extend(assessment_decisions.virtual_authorizations(workspace))
     identifiers: set[str] = set()
     known_hosts = discover_host_ids(workspace)
     for line_number, record in enumerate(records, start=1):
@@ -1237,6 +1244,14 @@ def _log_attack_path_locked(
     authorization = _authorization_index(root).get(auth_id)
     if authorization is None:
         raise TraceError("authorization-id does not exist in workspace")
+    if __package__:
+        from . import assessment_decisions
+    else:
+        import assessment_decisions
+    try:
+        assessment_decisions.require_current(root,auth_id,now=now)
+    except ValueError as exc:
+        raise TraceError(str(exc)) from exc
     assert normalized_technique is not None
     _assert_envelope(
         authorization,
