@@ -318,6 +318,11 @@ def compact(workspace: Path, identifier: str, *, apply: bool, expected_hash: str
     workspace = host_identity.validate_workspace(workspace)
     guard = tx.write_guard(workspace) if apply else workspace_health._existing_read_lock(workspace / ".workspace_mutation.lock")
     with guard:
+        if __package__:
+            from . import retention_policy
+        else:
+            import retention_policy
+        retention_policy.require_clear(workspace,identifier)
         directory, plan, source_hash = _committed(workspace, identifier)
         _private(directory, directory=True)
         plan_path = directory / "COMPACTION.json"
@@ -360,6 +365,13 @@ def prune_restore(collection: Path, operation_id: str, copy_id: str, *, apply: b
         if tx._json(operation / "COMMITTED.json") != {"instance_id": plan.get("instance_id"), "plan_sha256": source_hash}:
             raise RetentionError("restore must be committed before staging can be pruned")
         checkpoint = Path(plan["checkpoint"])
+        if __package__:
+            from . import retention_policy
+        else:
+            import retention_policy
+        for retained_workspace in (Path(plan['destination']),checkpoint / 'workspace'):
+            if retained_workspace.exists():
+                retention_policy.require_clear(retained_workspace)
         manifest = create_checkpoint.verify_checkpoint(checkpoint)
         if plan["checkpoint_id"] != manifest["checkpoint_id"] or plan["profile"] != manifest["operational_profile"]:
             raise RetentionError("retained checkpoint identity or profile differs from restore")

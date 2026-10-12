@@ -7,13 +7,23 @@ request with the same key returns its original receipt; a changed request using
 that key fails. An interrupted transaction must be recovered before retrying.
 
 The input contains `summary`, `result`, and optional lists `host_ids`, `asset_ids`,
-`objective_ids`, `evidence_ids`, `finding_ids`, `change_ids`, `claim_ids`, `run_ids`.
+`objective_ids`, `evidence_ids`, `finding_ids`, `change_ids`, `claim_ids`, `run_ids`,
+`observation_ids` and `local_artifact_ids`.
 Capture and verify evidence first. IDs must refer to existing records. Optional
 `attempt: {status, next_step}`, `task: {kind, external_ref, state}`, and `finding`
 (a finding patch as described in FINDINGS_REPORTING.md) create linked records in
 one recoverable transaction. The finding inherits the activity's title, assets,
 objectives and evidence unless explicitly supplied. Recording a hypothesis does
 not validate it. The activity, task and attempt reuse the supplied narrative.
+
+Optional `local_artifact: {path, artifact_class}` registers an already present
+local-processing file using the same purpose and host references. The existing
+origin/storage policy still applies; no-download does not gain an exception.
+Observation IDs connect parser output to the activity's assets and objectives.
+Source collection intake accepts `--source-kind`, `--origin` and an optional
+`--assessment-reference`; target files use origin-aware evidence intake instead.
+Host and global cards project the new records with revisions, review gaps and
+freshness hashes; use `cyber-state` to refresh the generated views.
 
 Changes, execution receipts and claims retain their own review contracts. The
 activity links them after creation; it never invents command execution or target

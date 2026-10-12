@@ -18,7 +18,7 @@ else:
 
 LEDGER = 'assessment_events.jsonl'
 MAX_BYTES = 32 * 1024 * 1024
-KINDS = {'decision':'DEC','asset':'AST','objective':'OBJ','finding':'FND','activity':'ACT','relationship':'REL','retention':'RET','ai-session':'AIS'}
+KINDS = {'decision':'DEC','asset':'AST','objective':'OBJ','finding':'FND','activity':'ACT','relationship':'REL','retention':'RET','ai-session':'AIS','disclosure':'DSC'}
 FIELDS = {'schema_version','sequence','entity_kind','entity_id','entity_revision','actor','reason','created_at_utc','configuration','instance_id','lifecycle_epoch','data','previous_sha256','event_sha256'}
 
 
@@ -124,7 +124,7 @@ def write(root, kind, data, *, actor, reason, expected_revision, expected_event,
             or type(expected_event) is not int or len(events) != expected_event):
         raise JournalError('assessment or configuration changed; refresh and review')
     instance, epoch, closed, inactive = config._environment(root)
-    if closed or inactive:
+    if (closed and kind!='retention') or inactive:
         raise JournalError('assessment records require an open, activated workspace')
     if kind not in KINDS:
         raise JournalError('unsupported assessment entity kind')

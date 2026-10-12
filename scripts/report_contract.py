@@ -530,10 +530,14 @@ def _evidence_ids(workspace: Path) -> set[str]:
 
 
 def _credential_records(workspace: Path) -> list[dict[str, Any]]:
+    if __package__:
+        from . import secret_provider
+    else:
+        import secret_provider
     ledger = workspace / "private/credentials/credentials.jsonl"
     if not _lexists(ledger):
-        return []
-    return _jsonl(ledger, "credential ledger")
+        return secret_provider.extend_credentials(workspace, [])
+    return secret_provider.extend_credentials(workspace, _jsonl(ledger, "credential ledger"))
 
 
 def _credential_index(workspace: Path) -> dict[str, dict[str, Any]]:

@@ -671,12 +671,16 @@ def _credential_reference_exists(
     credential_id = state["credential_id"]
     if credential_id is None:
         return
-    path = workspace / "private/credentials/credentials.jsonl"
-    _real_file(path, "credential ledger", maximum=16 * 1024 * 1024, private=True)
+    if __package__:
+        from . import report_contract
+    else:
+        import report_contract
+    legacy = workspace / 'private/credentials/credentials.jsonl'
+    if legacy.exists() or legacy.is_symlink():
+        _real_file(legacy, 'credential ledger', maximum=16 * 1024 * 1024, private=True)
     matches = 0
     try:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            record = json.loads(line)
+        for record in report_contract._credential_records(workspace):
             if record.get("credential_id") != credential_id:
                 continue
             if (
@@ -1217,7 +1221,13 @@ def promote_token(args: argparse.Namespace, now: datetime | None = None) -> int:
         secret, metadata = _secret_for_state(layout, state)
         reason = _text(args.reason, "reason", required=False)
         _reject_secret_text(secret, (reason,))
-        result = credential_intake.store_credential_bytes(
+        if __package__:
+            from . import engagement_config, workspace_vault
+        else:
+            import engagement_config
+            import workspace_vault
+        store = workspace_vault.store_bytes if engagement_config.is_managed(workspace) else credential_intake.store_credential_bytes
+        result = store(
             workspace,
             _credential_input(state, secret),
             now=moment,

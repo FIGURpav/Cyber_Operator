@@ -67,6 +67,9 @@ class AddPlan:
     digest: str
     size: int
     sensitive_hits: tuple[str, ...]
+    source_kind: str | None = None
+    origin: str | None = None
+    assessment_reference: str | None = None
 
 
 @dataclass(frozen=True)
@@ -341,10 +344,19 @@ def build_task_bootstrap_plan(
 
 def build_plan(
     *, lab: str, source_value: str, dest_value: str | None,
-    rw_root: Path, ro_root: Path,
+    rw_root: Path, ro_root: Path, source_kind: str | None = None,
+    origin: str | None = None, assessment_reference: str | None = None,
 ) -> AddPlan:
+    if source_kind is not None and source_kind not in {'application-code','documentation','specification','operator-output'}:
+        raise IntakeError('unsupported source kind')
+    if origin is not None and origin not in {'preexisting-nontarget','operator-generated'}:
+        raise IntakeError('target files require origin-aware assessment evidence intake, not the source collection')
+    if (source_kind is None)!=(origin is None):
+        raise IntakeError('source kind and origin must be supplied together')
+    if assessment_reference is not None and (not isinstance(assessment_reference,str) or not assessment_reference.strip() or len(assessment_reference)>512 or any(ord(c)<32 for c in assessment_reference)):
+        raise IntakeError('assessment reference must be bounded printable text')
     if not LAB_RE.fullmatch(lab):
-        raise IntakeError("invalid lab id; use letters, digits, '.', '_' or '-'")
+        raise IntakeError("invalid assessment source name; use letters, digits, '.', '_' or '-'")
     source = Path(source_value).expanduser().resolve(strict=False)
     rw_root = rw_root.expanduser().resolve(strict=False)
     ro_root = ro_root.expanduser().resolve(strict=False)
@@ -372,6 +384,7 @@ def build_plan(
         digest=tree_digest(source, items),
         size=sum(item.size for item in items),
         sensitive_hits=sensitive_hits(items),
+        source_kind=source_kind,origin=origin,assessment_reference=assessment_reference,
     )
 
 
@@ -450,6 +463,9 @@ def apply_plan(plan: AddPlan, *, task_root: Path, ro_root: Path) -> None:
         "bytes": plan.size,
         "file_count": sum(item.kind == "file" for item in plan.items),
     }
+    if plan.source_kind is not None:
+        record.update(schema=2,assessment=plan.lab,source_kind=plan.source_kind,origin=plan.origin,
+                      assessment_reference=plan.assessment_reference,destination_policy='verified-source-store-with-readonly-view')
     descriptor = os.open(manifest, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
     with os.fdopen(descriptor, "a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
@@ -643,7 +659,10 @@ def apply_task_bootstrap(
 def print_plan(plan: AddPlan, *, apply: bool) -> None:
     print("Cyber-Operator source intake")
     print(f"  mode:        {'APPLY' if apply else 'PREVIEW'}")
-    print(f"  lab:         {plan.lab}")
+    print(f"  assessment:  {plan.lab}")
+    if plan.source_kind is not None:
+        print(f"  source kind: {plan.source_kind}; origin: {plan.origin}")
+        print(f"  reference:   {plan.assessment_reference or '(none)'}")
     print(f"  source:      {plan.source}")
     print(f"  destination: {plan.destination}")
     print(f"  RO view:     {plan.ro_destination}")
@@ -689,6 +708,9 @@ def parser() -> argparse.ArgumentParser:
     sub = root.add_subparsers(dest="command")
     add = sub.add_parser("add", help="preview or copy one file/directory into an assessment source")
     add.add_argument("--assessment", "--lab", dest="lab", required=True, help="source collection name; --lab is a compatibility alias")
+    add.add_argument('--source-kind',choices=('application-code','documentation','specification','operator-output'))
+    add.add_argument('--origin',choices=('preexisting-nontarget','operator-generated'))
+    add.add_argument('--assessment-reference')
     add.add_argument("--path", required=True, dest="source_path")
     add.add_argument("--dest", help="relative destination inside the source collection; defaults to source basename")
     add.add_argument("--apply", action="store_true", help="perform the copy; otherwise preview only")
@@ -737,6 +759,7 @@ def main(argv: list[str] | None = None) -> int:
                 dest_value=args.dest,
                 rw_root=Path(args.rw_root),
                 ro_root=Path(args.ro_root),
+                source_kind=args.source_kind,origin=args.origin,assessment_reference=args.assessment_reference,
             )
             print_plan(plan, apply=args.apply)
             if not args.apply:

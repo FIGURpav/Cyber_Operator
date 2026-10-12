@@ -29,6 +29,11 @@ def snapshot(root, *, report=False, now=None):
     root = Path(root).absolute()
     health = workspace_health.snapshot(root,now=now)
     result = {'schema_version':'1.0','runtime':health,'target_executor':False,'next_steps':[]}
+    result['deployment_model']='local-per-operator'
+    result['optional_capabilities']={'knowledge':'explicit invocation','principal_candidates':'explicit invocation',
+        'parallel_sessions':'optional registration; writer checks remain enforced',
+        'sensitive_export':'disabled until a current separate decision and exact selection are reviewed',
+        'controlled_handoff':'not implemented'}
     if not health['history_readable']:
         result['next_steps'] = [item['next_step'] for item in health['blockers']]
         return result

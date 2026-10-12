@@ -11,6 +11,10 @@ remote file-transfer service or multi-user identity provider.
 
 ## Start
 
+The current release is 0.7.0. See [managed workflow](docs/MANAGED_WORKFLOW.md),
+[findings and reports](docs/FINDINGS_REPORTING.md), [activity and context](docs/ACTIVITY_AND_CONTEXT.md),
+[local vault](docs/LOCAL_VAULT.md), and [verified deployment](docs/DEPLOYMENT.md).
+
 Use Python 3.13+ on Linux or WSL, with the project and private data on a Linux
 filesystem. Windows-native execution is unsupported because locking and private
 filesystem permissions are part of the runtime contract.

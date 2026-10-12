@@ -769,6 +769,15 @@ def build_brief(
     except ValueError as exc:
         fatal(str(exc))
 
+    if __package__:
+        from . import report_contract
+    else:
+        import report_contract
+    for credential in report_contract._credential_records(workspace):
+        value = credential.get('secret')
+        if isinstance(value,str) and value and value in content:
+            fatal('brief source contains a stored credential value; redact the source before sharing')
+
     stats = {
         "host_id": host_id,
         "output_path": "",

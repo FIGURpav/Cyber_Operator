@@ -1,3 +1,18 @@
+# Cyber-Operator 0.7.0 — 2026-10-12
+
+- Add a local owner-only workspace vault with opaque references, compatible
+  credential readers, explicit additive migration and recoverable publication.
+- Keep legacy values intact; migrate managed token promotion to the local provider.
+- Add separate reviewed local plaintext disclosure with exact credential selection.
+- Add classification-aware retention status and reviewer holds that block cleanup.
+- Add local install/upgrade/verify/recover/rollback with release inventories,
+  retained source and wrappers, isolated runtime environments and local receipts.
+- Document local per-operator deployment and optional capability boundaries;
+  controlled handoff and shared hosting remain future work.
+- Connect managed assets, findings and activities to host/global freshness views;
+  link parsed observations and optional local artifacts through the activity service.
+- Add explicit source-kind/origin metadata and verify new records through checkpoint restore.
+
 # Cyber-Operator 0.6.0 — 2026-10-12
 
 - Add idempotent activity publication with optional linked attempts, tasks and

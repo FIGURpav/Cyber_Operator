@@ -15,6 +15,7 @@ if __package__:
     from . import (
         execution_provenance,
         log_attempt,
+        log_observation,
         operational_trace,
         report_contract,
         structured_state,
@@ -26,6 +27,7 @@ else:
     import engagement_config as config
     import execution_provenance
     import log_attempt
+    import log_observation
     import operational_trace
     import report_contract
     import structured_state
@@ -33,7 +35,8 @@ else:
 
 DEFAULTS = {'summary':'','result':'','host_ids':[],'asset_ids':[],'objective_ids':[],
             'evidence_ids':[],'finding_ids':[],'change_ids':[],'claim_ids':[],'run_ids':[],
-            'attempt':None,'task':None,'finding':None}
+            'attempt':None,'task':None,'finding':None,'observation_ids':[],
+            'local_artifact_ids':[],'local_artifact':None}
 
 
 def prepare(root, value, *, actor, reason, key, expected_revision, expected_event, now=None):
@@ -44,9 +47,13 @@ def prepare(root, value, *, actor, reason, key, expected_revision, expected_even
         raise ValueError('activity contains unsupported fields')
     value={**copy.deepcopy(DEFAULTS),**copy.deepcopy(value)}
     request_hash=config.digest({'input':value,'actor':actor,'reason':reason})
+    compatible_hashes={request_hash}
+    if not value['observation_ids'] and not value['local_artifact_ids'] and value['local_artifact'] is None:
+        previous={key:item for key,item in value.items() if key not in {'observation_ids','local_artifact_ids','local_artifact'}}
+        compatible_hashes.add(config.digest({'input':previous,'actor':actor,'reason':reason}))
     existing=[event for event in journal.load(root) if event['entity_kind']=='activity' and event['data'].get('idempotency_key')==key]
     if existing:
-        if existing[0]['data']['request_sha256']!=request_hash:
+        if existing[0]['data']['request_sha256'] not in compatible_hashes:
             raise ValueError('idempotency key already identifies a different request')
         return {'mode':'EXISTING','record':existing[0],'operations':[]}
     config._text(value['summary'],'activity summary',240)
@@ -62,6 +69,10 @@ def prepare(root, value, *, actor, reason, key, expected_revision, expected_even
     for field,kind in (('asset_ids','asset'),('objective_ids','objective'),('finding_ids','finding')):
         model.references(value[field],field,{key:item for key,item in known.items() if item['entity_kind']==kind})
     model.references(value['evidence_ids'],'evidence_ids',evidence)
+    observations=log_observation._read_existing_records(root/'observations.jsonl') if (root/'observations.jsonl').exists() else []
+    model.references(value['observation_ids'],'observation_ids',{item['observation_id']:item for item in observations})
+    artifacts=structured_state.local_artifact_states(root)
+    model.references(value['local_artifact_ids'],'local_artifact_ids',artifacts)
     if value['change_ids']:
         model.references(value['change_ids'],'change_ids',{item['change_id']:item for item in operational_trace.load_changes(root)})
     if value['claim_ids']:
@@ -73,6 +84,13 @@ def prepare(root, value, *, actor, reason, key, expected_revision, expected_even
             raise ValueError(f'{field} must be a list')  # noqa: TRY004 -- public validation contract
     report_contract.reject_secrets(root,{'value':value,'actor':actor,'reason':reason,'key':key})
     operations=[]
+    if value['local_artifact'] is not None:
+        config._keys(value['local_artifact'],{'path','artifact_class'},'local artifact options')
+        artifact=structured_state.register_local_artifact(root,**value['local_artifact'],purpose=value['summary'],host_ids=hosts,now=moment)
+        if any(item['relative_path']==artifact['relative_path'] and item['state'] not in {'disposed','missing'} for item in artifacts.values()):
+            raise ValueError('local artifact is already registered; link its ID instead')
+        value['local_artifact_ids'].append(artifact['local_artifact_id'])
+        operations.append((structured_state.LOCAL_ARTIFACT_LEDGER,artifact))
     attempt_id=None
     task_id=None
     if value['attempt'] is not None:
@@ -109,7 +127,7 @@ def prepare(root, value, *, actor, reason, key, expected_revision, expected_even
                              expected_revision=expected_revision,expected_event=expected_event,now=moment)['record']
         value['finding_ids'].append(finding['entity_id'])
         operations.append((journal.LEDGER,finding))
-    data={key:item for key,item in value.items() if key not in {'attempt','task','finding'}}
+    data={key:item for key,item in value.items() if key not in {'attempt','task','finding','local_artifact'}}
     data.update(idempotency_key=key,request_sha256=request_hash,attempt_id=attempt_id,task_id=task_id)
     event=journal.write(root,'activity',data,actor=actor,reason=reason,expected_revision=expected_revision,
                         expected_event=expected_event,now=moment)['record']

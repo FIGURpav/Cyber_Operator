@@ -183,7 +183,11 @@ def _credential_records(
             handles.credentials_fd,
             known_host_ids,
         )
-        return list(snapshot.records)
+        if __package__:
+            from . import secret_provider
+        else:
+            import secret_provider
+        return secret_provider.extend_credentials(root,list(snapshot.records))
     except credential_intake.CredentialIntakeError as exc:
         raise HostStateError(str(exc)) from exc
     finally:
@@ -338,14 +342,19 @@ def _source_snapshot(root: Path) -> dict[str, Any]:
     proof_ids: set[str] = set()
     proofs_by_host = {host: [] for host in hosts}
     if manifest:
-        for item in manifest["assessment_objectives"]:
+        for item in manifest.get("assessment_objectives", []):
             if item["objective_loot_id"]:
                 proof_ids.add(item["objective_loot_id"])
                 host = canonical(item["host_id"])
                 if host in proofs_by_host:
                     proofs_by_host[host].append({"loot_id": item["objective_loot_id"], "name": item["objective_name"]})
+    if __package__:
+        from . import assessment_projection
+    else:
+        import assessment_projection
+    assessment = assessment_projection.snapshot(root,history)
     return {
-        "root": root,
+        "root": root, "assessment": assessment,
         "records": {record.host_id: record for record in records}, "hosts": hosts,
         "history": history,
         "endpoints": {host: tuple(values) for host, values in endpoints.items()},
@@ -381,6 +390,8 @@ def _sanitized_host_source(index: dict[str, Any], host: str) -> dict[str, Any]:
     work = [{key: item.get(key) for key in ("work_item_id", "kind", "external_ref", "state", "summary", "references")} for item in index["work"][host]]
     artifacts = [{key: item.get(key) for key in ("local_artifact_id", "state", "artifact_class", "purpose", "size_bytes", "sha256")} for item in index["artifacts"][host]]
     return {
+        "assessment": index['assessment']['hosts'].get(host, []),
+        "configuration_revision": index['assessment']['configuration_revision'],
         "identity": {"host_id": host, "ip": record.ip, "hostname": record.hostname,
                      "endpoints": index["endpoints"][host],
                      "merged_ids": index["merged_ids"][host],
@@ -399,7 +410,8 @@ def host_digest(index: dict[str, Any], host: str) -> str:
 
 
 def global_digest(index: dict[str, Any]) -> str:
-    return hashlib.sha256(json.dumps({host: host_digest(index, host) for host in index["hosts"]}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    source={'hosts':{host: host_digest(index, host) for host in index['hosts']},'assessment':index['assessment']}
+    return hashlib.sha256(json.dumps(source, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def _active_changes(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -441,6 +453,11 @@ def render_host(index: dict[str, Any], host: str, moment: datetime) -> tuple[str
         f"- Interfaces: `{', '.join(index['endpoints'][host])}`",
         f"- Target generation: `{_safe(generations[-1][1]) if generations else 'not recorded'}`",
         f"- Current access: `{access}` via `{access_kind}`", "", "### Ports and services", ""]
+    assessment_lines=["### Assessment assets, objectives, findings and activity", "",
+                      f"- Configuration revision: {index['assessment']['configuration_revision']}"]
+    for item in index['assessment']['hosts'].get(host, [])[-MAX_ROWS:]:
+        assessment_lines.append(f"- `{item['id']}` revision {item['revision']} — {_safe(item['kind'])}: {_safe(item['label'],240)}; {_safe(item['state'])}; review required={item['review_required']}")
+    lines[7:7]=assessment_lines+[""]
     if services:
         lines.extend(["| Transport | Port | Service | State | Observation |", "|---|---:|---|---|---|"])
         for item in list(services.values())[-MAX_ROWS:]:
@@ -543,6 +560,11 @@ def render_global(index: dict[str, Any], moment: datetime) -> tuple[str, str]:
         lines.append(f"- `{item['work_item_id']}` — {_safe(item['kind'])} `{_safe(item['external_ref'])}`: {_safe(item['state'])} — {_safe(item['summary'], 240)}")
     if not any(item["state"] in {"identified", "in_progress", "blocked"} for item in work):
         lines.append("- No structured open work items.")
+    assessment = index['assessment']
+    lines.extend(["", "### Managed assessment records", "",
+                  f"- Configuration revision: {assessment['configuration_revision']}; journal event: {assessment['journal_sequence']}",
+                  f"- Records: {len(assessment['records'])}; requiring review: {sum(item['review_required'] for item in assessment['records'])}",
+                  "- Refresh with cyber-state after record changes; source digests detect stale views."])
     lines.extend(["", GLOBAL_END])
     content = "\n".join(lines)
     try:

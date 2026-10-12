@@ -27,7 +27,7 @@ DIRECTORY = Path("private/transactions")
 ID_RE = re.compile(r"^TXN-[0-9a-f]{32}$")
 MAX_PLAN = 4 * 1024 * 1024
 MAX_PAYLOAD = 64 * 1024 * 1024
-KINDS = {"evidence", "screenshot", "host-merge", "engagement-config", "assessment-record", "assessment-report", "assessment-activity"}
+KINDS = {"evidence", "screenshot", "host-merge", "engagement-config", "assessment-record", "assessment-report", "assessment-activity", "workspace-vault", "vault-disclosure"}
 _HELD: contextvars.ContextVar[tuple[Path, ...]] = contextvars.ContextVar("transaction_locks", default=())
 
 
@@ -165,8 +165,14 @@ def _allowed(kind: str, operation: dict[str, Any]) -> bool:
         )
     if kind == 'assessment-record':
         return action == 'append' and path == 'assessment_events.jsonl'
+    if kind == 'workspace-vault':
+        return ((action=='append' and path=='private/vault/credentials.jsonl')
+                or (action=='create' and bool(re.fullmatch(r'private/vault/(?:values/SEC-[0-9a-f]{32}\.secret|checkpoints/[0-9a-f]{64}\.jsonl)',path))))
+    if kind == 'vault-disclosure':
+        return ((action=='append' and path=='assessment_events.jsonl')
+                or (action=='create' and bool(re.fullmatch(r'private/vault/exports/EXP-[0-9a-f]{32}\.json',path))))
     if kind == 'assessment-activity':
-        return action == 'append' and path in {'assessment_events.jsonl','attempts.jsonl','work_items.jsonl'}
+        return action == 'append' and path in {'assessment_events.jsonl','attempts.jsonl','work_items.jsonl','local_artifacts.jsonl'}
     if kind == 'assessment-report':
         return action == 'create' and bool(re.fullmatch(r'report/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:html|json|svg)',path))
     if kind == "evidence":
@@ -307,7 +313,7 @@ def _validate_payload_contract(directory: Path, plan: dict[str, Any]) -> None:
         record = ledger_io.loads_json(payload)
         if not isinstance(record, dict):
             raise TransactionError("transaction ledger record must be an object")
-        if plan['kind'] in {'assessment-record','assessment-activity'} and operation['path']=='assessment_events.jsonl':
+        if plan['kind'] in {'assessment-record','assessment-activity','vault-disclosure'} and operation['path']=='assessment_events.jsonl':
             if __package__:
                 from . import assessment_journal
             else:

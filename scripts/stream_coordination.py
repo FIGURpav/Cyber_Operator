@@ -921,11 +921,16 @@ def _validate_typed_write(
 
 
 def _known_secrets(workspace: Path) -> list[str]:
+    if __package__:
+        from . import secret_provider
+    else:
+        import secret_provider
+    vault_values = [item['secret'] for item in secret_provider.extend_credentials(workspace, [])]
     ledger = workspace / "private" / "credentials" / "credentials.jsonl"
     if not ledger.exists():
-        return []
+        return vault_values
     _real_regular(ledger, "credential ledger")
-    result: list[str] = []
+    result: list[str] = vault_values
     try:
         with ledger.open("rb") as handle:
             for line in handle:

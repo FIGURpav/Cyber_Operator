@@ -471,11 +471,15 @@ def _assert_envelope(
 
 
 def _credential_records(workspace: Path) -> list[dict[str, Any]]:
+    if __package__:
+        from . import secret_provider
+    else:
+        import secret_provider
     path = workspace / "private" / "credentials" / "credentials.jsonl"
     if not path.exists():
-        return []
+        return secret_provider.extend_credentials(workspace, [])
     _real_regular(path, "credential ledger")
-    return _read_jsonl(path, missing_ok=False)
+    return secret_provider.extend_credentials(workspace, _read_jsonl(path, missing_ok=False))
 
 
 def _reject_secret_content(workspace: Path, values: Iterable[str | None]) -> None:

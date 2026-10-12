@@ -61,6 +61,19 @@ Neither setting supplies authorization. See docs/ARTIFACT_HANDLING.md.
 
 ## Development
 
+Use `cyber-vault` for new private credential intake. Preview the exact plan and
+apply the reviewed plan file. Values stay in owner-only workspace files without
+application encryption; ordinary records contain IDs. Historical credential
+intake remains a compatibility interface. Never migrate private records silently.
+`cyber-vault-export` is a separate optional plaintext disclosure workflow with a
+current sensitive-export decision and exact reviewer selection. Local cleanup
+does not revoke a remote credential. See docs/LOCAL_VAULT.md.
+
+Use `cyber-activity` to record supplied work with optional linked records. Use
+`cyber-status` to inspect consolidated state and `cyber-report`/`cyber-graph` for
+findings reports and evidence-backed SVG. Read omitted brief sources before
+acting. See docs/ACTIVITY_AND_CONTEXT.md and docs/FINDINGS_REPORTING.md.
+
 Use Linux or WSL on a Linux filesystem with the locked Python environment.
 Preserve append-only histories, immutable evidence, private permissions, writer
 leases, compare-and-swap checks and fail-closed validation. Use temporary synthetic

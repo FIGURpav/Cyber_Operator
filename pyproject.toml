@@ -1,6 +1,6 @@
 [project]
 name = "cyber-operator"
-version = "0.6.0"
+version = "0.7.0"
 description = "Human-supervised assessment workspace, evidence and reporting for security teams."
 readme = "README.md"
 requires-python = ">=3.13"

@@ -267,10 +267,12 @@ def _summaries(root: Path) -> tuple[dict[str, int], dict[str, int]]:
     work = Counter(item["state"] for item in structured_state.work_item_states(root).values())
     if (root / 'assessment_events.jsonl').exists():
         if __package__:
-            from . import assessment_model, assessment_reporting
+            from . import assessment_journal, assessment_model, assessment_reporting
         else:
+            import assessment_journal
             import assessment_model
             import assessment_reporting
+        work['activities_recorded'] = len(assessment_journal.states(root,'activity'))
         entities = assessment_model.states(root)
         for event in entities.values():
             data = event['data']
