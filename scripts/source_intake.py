@@ -687,10 +687,10 @@ def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(prog="cyber-source")
     root.set_defaults(command=None)
     sub = root.add_subparsers(dest="command")
-    add = sub.add_parser("add", help="preview or copy one file/directory into a lab source")
-    add.add_argument("--lab", required=True)
+    add = sub.add_parser("add", help="preview or copy one file/directory into an assessment source")
+    add.add_argument("--assessment", "--lab", dest="lab", required=True, help="source collection name; --lab is a compatibility alias")
     add.add_argument("--path", required=True, dest="source_path")
-    add.add_argument("--dest", help="relative destination inside the lab; defaults to source basename")
+    add.add_argument("--dest", help="relative destination inside the source collection; defaults to source basename")
     add.add_argument("--apply", action="store_true", help="perform the copy; otherwise preview only")
     add.add_argument("--rw-root", default=os.getenv("CYBER_SOURCE_RW", str(DEFAULT_RW_ROOT)))
     add.add_argument("--ro-root", default=os.getenv("CYBER_SOURCE_RO", str(DEFAULT_RO_ROOT)))
@@ -718,7 +718,7 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "attest that the selected tree predates target collection and is "
-            "course/operator material"
+            "operator-provided source material"
         ),
     )
     return root

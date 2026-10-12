@@ -29,6 +29,11 @@ def workspace_root() -> Path:
     return configured_path("workspace_root", "CYBER_WORKSPACE_ROOT", "workspaces")
 
 
+def knowledge_root() -> Path:
+    """Resolve private knowledge independently of the source checkout."""
+    return configured_path("knowledge_root", "CYBER_KNOWLEDGE_ROOT", "private-knowledge")
+
+
 def source_root(*, readonly: bool = True) -> Path:
     return configured_path(
         "source_ro" if readonly else "source_rw",

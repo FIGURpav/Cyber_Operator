@@ -71,3 +71,21 @@ def test_release_refuses_symlink(tmp_path):
 def test_real_source_release_check():
     files = release_check.release_files(Path(__file__).parents[1])
     assert len(files) > 100
+
+
+def test_private_knowledge_default_and_override(tmp_path, monkeypatch):
+    monkeypatch.delenv("CYBER_CONFIG", raising=False)
+    monkeypatch.delenv("CYBER_KNOWLEDGE_ROOT", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    assert runtime_config.knowledge_root() == tmp_path / "cyber-operator/private-knowledge"
+    monkeypatch.setenv("CYBER_KNOWLEDGE_ROOT", str(tmp_path / "reviewed-notes"))
+    assert runtime_config.knowledge_root() == tmp_path / "reviewed-notes"
+
+
+def test_truthful_model_default_and_source_alias():
+    from scripts import log_query, source_intake
+
+    assert log_query.parse_args(["--workspace", "/tmp/synthetic", "--purpose", "review"]).model == "unknown"
+    new = source_intake.parser().parse_args(["add", "--assessment", "review", "--path", "notes"])
+    old = source_intake.parser().parse_args(["add", "--lab", "review", "--path", "notes"])
+    assert vars(new) == vars(old)

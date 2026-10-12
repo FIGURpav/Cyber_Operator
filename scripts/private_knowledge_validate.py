@@ -14,6 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
 
+try:
+    from scripts import runtime_config
+except ModuleNotFoundError:
+    import runtime_config
+
 MAX_FILE_BYTES = 2 * 1024 * 1024
 QUICK_CARD_WORD_LIMIT = 600
 NORMALIZED_NOTE_WORD_LIMIT = 2_000
@@ -495,7 +500,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--root",
         type=Path,
-        default=Path(__file__).parents[1] / "private_knowledge",
+        default=runtime_config.knowledge_root(),
         help="private knowledge root",
     )
     return parser

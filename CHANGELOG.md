@@ -1,3 +1,11 @@
+# Cyber-Operator 0.3.2 — 2026-10-12
+
+- Retained release 0.3.1 and established local source history for staged changes.
+- Added `cyber-scan-import` and `--assessment` with existing names as aliases.
+- Replaced the guessed query-model default with the explicit `unknown` value.
+- Routed private knowledge through runtime configuration, outside the checkout.
+- Added a capability matrix and tracked cross-module acceptance scenarios.
+
 # Cyber-Operator 0.3.1 — 2026-10-09
 
 - Made external scope/RoE documentation optional through an explicit None/null answer.

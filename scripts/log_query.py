@@ -221,7 +221,7 @@ def log_query(
     workspace: str,
     purpose: str,
     host_ids: list[str] | None = None,
-    model: str = "Kimi K2.7 Code",
+    model: str = "unknown",
     context_refs: list[str] | None = None,
     prompt_file: str | None = None,
     now: datetime | None = None,
@@ -276,8 +276,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="Kimi K2.7 Code",
-        help="model name (default: 'Kimi K2.7 Code')",
+        default="unknown",
+        help="actual model identifier; omitted values are recorded as unknown",
     )
     parser.add_argument(
         "--context",
