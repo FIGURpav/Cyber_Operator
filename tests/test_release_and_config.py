@@ -89,3 +89,33 @@ def test_truthful_model_default_and_source_alias():
     new = source_intake.parser().parse_args(["add", "--assessment", "review", "--path", "notes"])
     old = source_intake.parser().parse_args(["add", "--lab", "review", "--path", "notes"])
     assert vars(new) == vars(old)
+
+
+@pytest.mark.parametrize("encoded", [False, True])
+def test_release_refuses_private_editor_paths(tmp_path, encoded):
+    root = tmp_path / "source"
+    root.mkdir()
+    path = "\\\\wsl.localhost\\Example-Distro\\" + "home\\" + "private-user\\workspaces"
+    content = json.dumps({"folders": [{"path": path}]}) if encoded else path
+    (root / "Cyber-Operator.code-workspace").write_text(content)
+    with pytest.raises(ValueError, match="personal"):
+        release_check.release_files(root)
+
+
+def test_release_refuses_non_english_documentation(tmp_path):
+    readme = tmp_path / "README.md"
+    readme.write_text("\u017bak", encoding="utf-8")
+    with pytest.raises(ValueError, match="English"):
+        release_check.release_files(tmp_path)
+
+
+def test_release_refuses_cookie_data_under_allowed_filename(tmp_path):
+    (tmp_path / "README.md").write_text("# Netscape HTTP Cookie File\n")
+    with pytest.raises(ValueError, match="cookie"):
+        release_check.release_files(tmp_path)
+
+
+def test_release_includes_gitlab_pipeline(tmp_path):
+    pipeline = tmp_path / ".gitlab-ci.yml"
+    pipeline.write_text("stages: [validate]\n")
+    assert release_check.release_files(tmp_path) == [pipeline]

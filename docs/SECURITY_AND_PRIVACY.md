@@ -31,3 +31,7 @@ protected runtimes. Perform reviewed, confidential handoffs through approved sto
 Release packaging uses an explicit source allowlist and rejects runtime paths,
 personal home paths and legacy product markers. This reduces accidental inclusion;
 source ownership and the contents of any newly added binary still require review.
+
+Shared source and operator documentation must be in English. Release validation
+also checks JSON-escaped editor paths and rejects cookie files and Polish text.
+See [GitLab handoff](GITLAB_HANDOFF.md) for source-history and publication guidance.

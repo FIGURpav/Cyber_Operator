@@ -1,0 +1,20 @@
+# Use a Linux container runner. This job runs synthetic tests only.
+image: python:3.13-slim
+
+stages:
+  - validate
+
+variables:
+  UV_NO_PROGRESS: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+source-validation:
+  stage: validate
+  before_script:
+    - python -m pip install --no-cache-dir uv==0.12.24
+    - uv sync --locked
+    - chmod +x scripts/cyber-*
+  script:
+    - uv run --locked ruff check .
+    - uv run --locked python -m pytest -q
+    - uv run --locked python scripts/release_check.py

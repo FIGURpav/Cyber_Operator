@@ -11,12 +11,14 @@ import sys
 import zipfile
 from pathlib import Path
 
-ROOT_FILES = {"README.md", "AGENTS.md", "CHANGELOG.md", "pyproject.toml", "uv.lock", ".gitignore", ".gitattributes", "config.example.toml", "Cyber-Operator.code-workspace", "RELEASE_INVENTORY.json"}
+ROOT_FILES = {"README.md", "AGENTS.md", "CHANGELOG.md", "pyproject.toml", "uv.lock", ".gitignore", ".gitattributes", ".gitlab-ci.yml", "config.example.toml", "Cyber-Operator.code-workspace", "RELEASE_INVENTORY.json"}
 TREES = {"scripts", "tests", "templates", "docs", "knowledge_base", ".github"}
 IGNORED = {".venv", "__pycache__", ".pytest_cache", ".ruff_cache", ".git"}
 TEXT_SUFFIXES = {".py", ".md", ".toml", ".lock", ".json", ".yml", ".yaml", ".svg", ".mmd", ".code-workspace"}
 PRIVATE_NAMES = {"TASK_CONTEXT.md", "ACTIVE_TASK", "engagement.json", "engagement_events.jsonl", "engagement_intake.json", "engagement_manifest.json", "credentials.jsonl", ".env"}
 MARKERS = re.compile(r"\b(?:" + "OS" + "AI" + r"\+?|" + "H" + "TB" + r"|Off" + "Sec" + r")\b|\bexam[-_](?:fast|no[-_]download)|[A-Z]:[\\/]Users[\\/][^\\/\s]+|/ho" + r"me/[^/\s]+/", re.IGNORECASE)
+
+POLISH_TEXT = re.compile(r"[\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c]", re.IGNORECASE)
 
 
 def release_files(root: Path) -> list[Path]:
@@ -36,8 +38,12 @@ def release_files(root: Path) -> list[Path]:
         if path.suffix not in TEXT_SUFFIXES and not path.name.startswith("cyber-") and path.name not in ROOT_FILES:
             raise ValueError(f"unreviewed file type: {relative}")
         text = path.read_text(encoding="utf-8")
-        if MARKERS.search(relative.as_posix()) or MARKERS.search(text):
+        if MARKERS.search(relative.as_posix()) or MARKERS.search(re.sub(r"\\+", "/", text)):
             raise ValueError(f"legacy branding or personal home path: {relative}")
+        if POLISH_TEXT.search(text) or relative.name.endswith("_PL.md"):
+            raise ValueError(f"release content must be in English: {relative}")
+        if text.startswith("# Netscape HTTP Cookie File"):
+            raise ValueError(f"cookie data in release: {relative}")
         files.append(path)
     return files
 

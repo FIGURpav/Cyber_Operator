@@ -72,15 +72,15 @@ def test_service_token_derives_bounded_role_forms() -> None:
 
 def test_domain_variants_are_explicit_and_retain_state() -> None:
     candidates = principal_candidates.build_candidates(
-        observed=("nora.klein",),
-        domain="MEGACORPONE",
-        upn_suffix="megacorpone.ai",
+        observed=("test.user",),
+        domain="EXAMPLE",
+        upn_suffix="example.test",
         include_domain_variants=True,
     )
     indexed = by_name(candidates)
 
-    assert indexed["MEGACORPONE\\nora.klein"].state == "observed"
-    assert indexed["nora.klein@megacorpone.ai"].state == "observed"
+    assert indexed["EXAMPLE\\test.user"].state == "observed"
+    assert indexed["test.user@example.test"].state == "observed"
 
 
 def test_gcp_does_not_invent_a_universal_default_user() -> None:

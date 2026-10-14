@@ -1,4 +1,44 @@
-# Verification baseline — 2026-10-09
+# Current verification — 2026-10-14
+
+Cyber-Operator **0.7.0** was prepared for an internal GitLab handoff using the latest
+local source and the English operator guide. Product version, lockfile, changelog,
+six original commits and tags `v0.3.1` through `v0.7.0` are retained unchanged.
+The source includes the GitLab publication changes. See [GitLab handoff](GITLAB_HANDOFF.md).
+
+Validation used an isolated Linux-filesystem copy under Ubuntu 24.04 / WSL,
+CPython 3.13.16, uv 0.12.24, pytest 9.1.1 and Ruff 0.16.0. Dependencies were
+installed offline from the existing cache using `uv sync --locked --offline`.
+
+```text
+Focused release, principal and deployment tests: 30 passed in 0.94s
+Full regression suite: 1400 passed, 23 subtests passed in 55.10s
+Ruff: All checks passed!
+Release-content validation: 190 source files; private runtime absent
+Local documentation links: passed (template evidence placeholders excluded)
+GitLab CI YAML: parsed locally; remote pipeline not executed
+```
+
+Five new regression cases cover plain and JSON-escaped private editor paths,
+non-English documentation, cookies disguised as source and GitLab CI inclusion.
+All assessment data used by the tests was synthetic. No real target was tested.
+
+The retained Git history contains 6 commits, 30 trees and 249 blobs. The branch and
+all six tag targets match the original object IDs. `git fsck --full --no-reflogs
+--unreachable` passed with no unreachable objects. Local assistant checkpoint refs,
+reflogs, hooks, private editor paths, cookies and runtime directories were excluded.
+A historical synthetic identity example was retained to preserve the original
+commit IDs; its current-source replacement uses reserved example data.
+
+Pattern review found no personal home paths, Polish text or credential tokens in
+the retained history. Private-key-header matches were validator constants or
+synthetic negative tests, with no actual key payloads. Such checks are bounded and
+do not prove the absence of every possible unknown secret. Local validation does
+not establish the outcome of a GitLab service-side pipeline; check its status after
+each publication.
+
+The following section records the older 0.3.1 baseline, not the current release.
+
+## Historical verification baseline — 2026-10-09
 
 Cyber-Operator 0.3.1 was verified in an isolated Linux-filesystem copy under Ubuntu
 24.04 in WSL, using CPython 3.13.16, pytest 9.1.1, Ruff 0.16.0 and the locked
@@ -25,8 +65,8 @@ facts and policy defaults. Existing checkpoint, concurrency, transaction recover
 adoption, origin and projection integrity coverage remains in the full suite.
 Source, templates, operator prompts and documentation are written in English.
 
-This release is a clean new source tree. The original source and historical archives
-were retained separately. There is no Git history in the supplied source snapshot;
+That historical release was a clean new source tree. The original source and archives
+were retained separately. There was no Git history in that supplied source snapshot;
 no history rewrite, remote publication or repository push was performed. The included
 CI workflow is configured, but has not been run by a remote CI service in this work.
 

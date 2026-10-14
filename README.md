@@ -1,119 +1,273 @@
-# Cyber-Operator
+# **Cyber-Operator - AI-Assisted Security Assessment Workspace**
 
-Cyber-Operator helps a security team preserve context, assessment records, evidence
-and reporting continuity. The operator supplies scope and makes decisions; a model
-can review bounded context and propose work. Loading a workspace never authorizes
-actions against a target.
+Cyber-Operator helps security teams retain assessment context, organize evidence,
+track findings and produce reviewable reports. It connects the work of a human
+operator and an external AI assistant through durable records, explicit decisions
+and a shared view of assessment progress.
 
-The runtime is a collection of local Python tools, shell entry points and agent
-instructions. It does not contain a model service, autonomous assessment engine,
-remote file-transfer service or multi-user identity provider.
+The project addresses a practical problem: observations, rationale and next steps
+often become scattered across terminals, conversations and documents.
+Cyber-Operator keeps those records connected so work can resume with its scope,
+evidence and open questions intact.
 
-## Start
+**Version:** 0.7.0
 
-The current release is 0.7.0. See [managed workflow](docs/MANAGED_WORKFLOW.md),
-[findings and reports](docs/FINDINGS_REPORTING.md), [activity and context](docs/ACTIVITY_AND_CONTEXT.md),
-[local vault](docs/LOCAL_VAULT.md), and [verified deployment](docs/DEPLOYMENT.md).
+**Platform:** Linux / WSL, Python 3.13+
 
-Use Python 3.13+ on Linux or WSL, with the project and private data on a Linux
-filesystem. Windows-native execution is unsupported because locking and private
-filesystem permissions are part of the runtime contract.
+**Full documentation:** [Operator guide and system description](docs/OPERATOR_GUIDE_EN.md)
+
+## **Key Features & Architecture**
+
+- **Human-directed assessment workflow:** Resumable intake, versioned scope and
+  policy settings, explicit configuration review and separately recorded activity
+  decisions.
+- **Durable assessment memory:** Stable IDs, retained revisions, append-only
+  journals and consolidated status across assets, objectives, observations,
+  activities and findings.
+- **Evidence and provenance:** Immutable evidence with hashes, imports of supplied
+  scan results and execution receipts linked to the claims they support.
+- **Context for an AI assistant:** Bounded briefs that retain relevant constraints,
+  identify omitted information and help a new session resume existing work.
+- **Finding lifecycle and objective coverage:** Separate confidence, remediation
+  and retest states, evidence requirements and explicit limitations for partial
+  or untested objectives.
+- **Reports and graphs:** Local HTML/JSON report snapshots tied to exact recorded
+  state, plus evidence-backed SVG relationship graphs.
+- **Continuity and recovery:** Checkpoints, restore, transaction recovery, writer
+  leases and optional coordination between sessions under one OS account.
+- **Local deployment and data controls:** Independent artifact-handling settings,
+  local vault references, reviewed plaintext disclosure, retention holds and
+  install/upgrade/verify/rollback tooling.
+
+The implementation separates four responsibilities:
+
+| Component | Responsibility |
+| --- | --- |
+| **Human operator and reviewer** | Supply engagement facts, define scope, evaluate proposals and record actual decisions |
+| **External AI assistant** | Interpret supplied context, develop hypotheses and use available local commands under operator control |
+| **Cyber-Operator runtime** | Validate and retain records, preserve integrity, build context and generate reports |
+| **External assessment tools** | Perform separately authorized tests and supply results for explicit intake |
+
+```mermaid
+flowchart LR
+    A["Scope and operator facts"] --> B["Configuration draft and review"]
+    B --> C["Private assessment workspace"]
+    C --> D["Context for the assistant"]
+    D --> E["Proposed work and interpretations"]
+    E --> F["Operator decision"]
+    F --> G["Supplied results and evidence"]
+    G --> H["Findings, reports and graphs"]
+    G --> C
+```
+
+The runtime is a collection of local Python tools and `cyber-*` commands.
+It works without an AI model; conversational operation requires an external
+assistant environment with access to the tools. Version 0.7.0 does not include a
+model service, autonomous assessment engine or scanner/exploit executor.
+
+## **Project Structure**
+
+```text
+cyber-operator/
+|-- AGENTS.md                       # Assistant and development rules
+|-- README.md                       # Project overview and quick start
+|-- scripts/                        # Python implementation and cyber-* commands
+|-- templates/                      # Empty state, reports and assessment presets
+|-- tests/                          # Synthetic regression suite
+|-- docs/
+|   |-- OPERATOR_GUIDE_EN.md        # Standalone English operator guide
+|   |-- ARCHITECTURE.md             # Components and integrity contracts
+|   |-- MANAGED_WORKFLOW.md         # Configuration and review workflow
+|   |-- CURRENT_STATE.md            # Recorded validation results
+|   `-- ...                        # Detailed operating and development guidance
+|-- knowledge_base/                 # Index for separately reviewed public knowledge
+|-- config.example.toml             # Deployment configuration example
+|-- pyproject.toml                  # Runtime version and development dependencies
+|-- uv.lock                         # Locked development environment
+|-- .gitlab-ci.yml                  # GitLab validation pipeline
+`-- .github/workflows/ci.yml        # Retained GitHub validation workflow
+```
+
+Private workspaces, credentials, evidence, reports and runtime state are stored
+outside the repository. They are created explicitly for an assessment and are
+not included in the shared source.
+
+## **Available Command Suite**
+
+| Commands | Area | Purpose |
+| --- | --- | --- |
+| `cyber-init`, `cyber-workspace` | Setup | Preview initialization, create and select private workspaces, run diagnostics |
+| `cyber-engagement`, `cyber-decision` | Review | Maintain versioned configuration and record explicit activity decisions |
+| `cyber-status`, `cyber-host-state` | Context | Inspect consolidated assessment state and host projections |
+| `cyber-host`, `cyber-asset`, `cyber-objective` | Scope model | Register hosts, assets and assessment objectives |
+| `cyber-observe`, `cyber-source`, `cyber-scan-import` | Intake | Record observations and import supplied source material or scan results |
+| `cyber-activity`, `cyber-provenance` | Work history | Retain supplied work, linked records and execution evidence |
+| `cyber-finding`, `cyber-assessment` | Findings | Maintain findings, revisions, reviews and documented relationships |
+| `cyber-report`, `cyber-graph` | Reporting | Check readiness and build local report snapshots or SVG graphs |
+| `cyber-vault`, `cyber-vault-export`, `cyber-retention` | Private data | Manage local references, separately reviewed disclosure and retention holds |
+| `cyber-checkpoint`, `cyber-recovery`, `cyber-stream` | Continuity | Preserve and restore state, recover writes and coordinate sessions |
+| `cyber-deploy` | Deployment | Preview and apply local installation, upgrade, verification and rollback |
+
+See the [operator guide](docs/OPERATOR_GUIDE_EN.md) for command examples and the
+[capability matrix](docs/CAPABILITIES.md) for managed and legacy workspace behavior.
+
+## **Requirements & Installation**
+
+### System requirements
+
+- **Operating system:** Linux or WSL with the checkout and private data on a Linux
+  filesystem.
+- **Python:** 3.13 or newer.
+- **Development tooling:** `uv`, with dependencies pinned by `uv.lock`.
+- **Optional AI interface:** A separately configured assistant that can use the
+  local commands.
+
+The runtime uses the Python standard library. Filesystem permissions, locking
+and atomic operations are part of its contract, so native Windows Python execution
+is unsupported. A Windows checkout can be used for source review and Git transport.
+
+### Installation and setup
+
+Clone this project using its GitLab clone URL into a directory on a Linux
+filesystem, then run:
 
 ```sh
+cd cyber-operator
 uv sync --locked
+chmod +x scripts/cyber-*
 export PATH="$PWD/.venv/bin:$PWD/scripts:$PATH"
 mkdir -p -m 700 "$HOME/.local/share/cyber-operator/workspaces"
 cyber-workspace list
 ```
 
-An empty list is expected in a new installation. No active workspace, host, secret,
-authorization or writer lease is shipped.
+An empty list is expected on a new installation. No active workspace, target,
+credential or authorization is shipped.
 
-Collect the fields in [Operator intake](docs/OPERATOR_INTAKE.md), store the reviewed
-JSON outside this repository, and initialize it through `cyber-init`. Partial facts
-create a draft with missing-field questions. Preview and
-apply are separate calls. Selection remains a separate decision.
+Deployment paths can be configured through
+[config.example.toml](config.example.toml), `CYBER_CONFIG`,
+`CYBER_WORKSPACE_ROOT` and supported command options. For an installed runtime,
+see [Deployment](docs/DEPLOYMENT.md).
+
+## **Usage**
+
+### Start an assessment
+
+Collect the fields in [Operator intake](docs/OPERATOR_INTAKE.md) and save the
+reviewed intake JSON outside the checkout. Preview initialization before applying
+the same reviewed input:
 
 ```sh
+# Replace the input path and workspace name with your reviewed values.
 cyber-init --root "$HOME/.local/share/cyber-operator/workspaces" --template pentest-web-app-standard --input /private/intake.json
 cyber-init --root "$HOME/.local/share/cyber-operator/workspaces" --template pentest-web-app-standard --input /private/intake.json --apply
-cyber-workspace select --module client-review
-cyber-workspace select --module client-review --apply
+cyber-workspace select --module example-review
+cyber-workspace select --module example-review --apply
 cyber-workspace doctor --json
-cyber-workspace resolve --check-write
+cyber-engagement status
+cyber-engagement questions
+cyber-status
 ```
 
-Replace `/private/intake.json` and `client-review` with the reviewed file and its
-workspace name. `--root`, the `CYBER_WORKSPACE_ROOT` environment variable and the
-optional `CYBER_CONFIG` TOML file support deployment-specific paths. See
-[config.example.toml](config.example.toml). Never place client data in this checkout.
+Initialization can create an incomplete draft. Complete the missing answers,
+preview the complete definition, submit it and record the reviewer's explicit
+decision through the [managed workflow](docs/MANAGED_WORKFLOW.md). Workspace
+selection does not replace configuration review or authorize target actions.
 
-## Policies
+### Example assistant requests
 
-New team workspaces use [versioned assessment configuration](docs/CONFIGURATION.md).
-`engagement.json` is authoritative; every proposal and review is tracked in
-`engagement_events.jsonl`. `TASK_CONTEXT.md` is a generated view. Select
-`standard-assessment` or `pentest-web-app-standard`; templates supply reviewable
-defaults and policy boundaries, not permissions. The web template prohibits shells,
-persistence and expansion beyond explicitly scoped applications/APIs.
+These examples assume an external assistant with local tool access:
 
-Use `cyber-engagement status`, `questions`, `show` and `history` to inspect the
-configuration. Changes use previewed `propose` and `approve` decisions with revision
-and event-sequence checks. Pending proposals leave effective settings unchanged.
-`reject`, `pause` and `revoke` preserve the decision history. See the configuration
-guide for the complete workflow, compatibility and implementation limits.
+> **Assessment setup:** Help me prepare a workspace. Collect the missing scope,
+> timing and data-handling facts, then show me the configuration preview.
 
-An external scope/RoE document is optional: explicitly answer `None` to record no
-document. Omitted answers remain visible as missing facts. Explicit configuration
-reviews can use an internal audit receipt instead of an external document reference.
-Scope, timing and individual policy choices still require review; see
-[Operator intake](docs/OPERATOR_INTAKE.md#optional-external-documentation).
+> **Session resumption:** Read the current status and bounded context. Summarize
+> confirmed findings, unresolved hypotheses, missing evidence and open decisions.
 
-| Choice | Effect |
-|---|---|
-| Legacy `strict` / `controlled-engagement` | Unmanaged-workspace compatibility; managed workspaces configure the report contract explicitly. |
-| `standard` | Local target-file persistence is subject to the engagement's data approval. |
-| `no-download` | Supported intake refuses local persistence of target-origin files. |
-| Remote storage `disabled` | No remote artifact location is registered. |
-| Remote storage `approved` | Records the approved URI and approval reference. Performs no transfer. |
+> **Evidence review:** Link this supplied observation to the relevant asset and
+> objective. Identify which conclusions it supports and which need further evidence.
 
-The storage switches are independent. `no-download` never selects a host, enables
-remote storage or relaxes secret handling. Read [Artifact handling](docs/ARTIFACT_HANDLING.md)
-for enforcement boundaries and operator responsibilities.
+> **Reporting:** Check report readiness, explain uncovered objectives and prepare
+> an HTML/JSON report preview from the reviewed records.
 
-In managed workspaces, supported target-file capture also requires current
-configuration review within the assessment window. Legacy setters and target-grant
-commands cannot override the new model. Configuration review records accepted
-conditions; it does not grant permission for target actions.
+## **Structured Information Model**
 
-## Workflow and structure
+| Record | What it retains |
+| --- | --- |
+| Engagement | Scope, objectives, time window, policy choices, setting origins and review history |
+| Asset and objective | Applications, endpoints, services or identities, with explicit scope and coverage references |
+| Evidence | Retained bytes, provenance, metadata and content hashes |
+| Finding | Confidence, severity, impact, evidence, remediation and retest state |
+| Activity and decision | Supplied work and outcomes, linked records and actual human decisions |
+| Relationship | An observed, inferred or rejected connection between assets and findings |
+| Report snapshot | The configuration, record revisions and journal sequence used to produce a deliverable |
 
-```mermaid
-flowchart LR
-  A[Operator intake: scope, owners, time, risk] --> B[Validate and preview]
-  B --> C[Apply: blank private workspace]
-  C --> D[Select and diagnose]
-  D --> E[Load bounded context]
-  E --> F[Model proposal]
-  F --> G[Operator review]
-  G --> H[Record observations and evidence]
-  H --> I[Review findings and report]
-  I --> J[Resolve tokens, close, retain or dispose]
-  H --> E
-```
+Corrections create new revisions while preserving prior state. Confirmed findings
+and retests require evidence; reports expose incomplete coverage and unresolved
+checks. See [Findings and reporting](docs/FINDINGS_REPORTING.md).
 
-See [Architecture and logical tree](docs/ARCHITECTURE.md),
-[Operator workflow](docs/OPERATOR_WORKFLOWS.md),
-[Reporting](docs/REPORTING.md), [Security and privacy](docs/SECURITY_AND_PRIVACY.md),
-[Team use](docs/TEAM_WORKFLOW.md) and [Release notes](CHANGELOG.md).
+## **Output Reports & Graphs**
 
-## Verification
+- **Readiness checks** evaluate objective coverage, finding reviews, evidence
+  requirements and unresolved token state.
+- **HTML reports and schema-3.0 JSON snapshots** bind the output to reviewed
+  configuration and exact recorded state.
+- **Unresolved checks** produce an explicitly marked draft rather than a ready
+  report.
+- **SVG graphs** present documented relationships and retained operational paths.
+  Observed relationships require evidence references.
+- **Preview/apply publication** retains existing outputs and uses recoverable
+  writes. Ordinary reports exclude secret values.
+
+PDF/DOCX report adapters and remote rendering services are not part of this
+release. The included operator guide is a separate Markdown document.
+
+## **Security & Operating Boundaries**
+
+- **Explicit operator control:** Templates, loaded context, restored history and
+  configuration acceptance do not authorize target actions.
+- **Independent storage choices:** `standard` and `no-download` govern supported
+  local persistence of target-origin files. Remote storage `disabled`/`approved`
+  records location metadata and performs no transfer.
+- **Preserved integrity:** Supported writes use validation, append-only histories,
+  immutable evidence, private permissions, locks, transactions and stale-state checks.
+- **Untrusted inputs:** Imported material and model output require review; a model
+  interpretation does not itself establish a finding.
+- **Local identity limits:** Actor labels and review receipts are audit records,
+  not authentication or central RBAC. Independent operators need separately
+  protected runtimes.
+- **External-tool limits:** The runtime does not supervise arbitrary commands or
+  automatically control the network behavior of external assessment tools.
+
+See [Security and privacy](docs/SECURITY_AND_PRIVACY.md),
+[Artifact handling](docs/ARTIFACT_HANDLING.md) and [Local vault](docs/LOCAL_VAULT.md)
+for the detailed contracts.
+
+## **Documentation & Validation**
+
+Start with the **[English operator guide](docs/OPERATOR_GUIDE_EN.md)** for
+architecture, conversational setup, workflows, command references and diagrams.
+
+Additional references:
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Managed workflow](docs/MANAGED_WORKFLOW.md)
+- [Activity and context](docs/ACTIVITY_AND_CONTEXT.md)
+- [Findings and reporting](docs/FINDINGS_REPORTING.md)
+- [GitLab handoff](docs/GITLAB_HANDOFF.md)
+- [Current verification](docs/CURRENT_STATE.md)
+- [Changelog](CHANGELOG.md)
+
+Run development checks on a Linux filesystem:
 
 ```sh
-uv run python -m pytest -q
-uv run ruff check .
-uv run python scripts/release_check.py
+uv sync --locked
+uv run --locked python -m pytest -q
+uv run --locked ruff check .
+uv run --locked python scripts/release_check.py
 ```
 
-Tests create synthetic temporary workspaces. They do not run a live assessment.
-The observed validation results are recorded in [Current state](docs/CURRENT_STATE.md).
+Tests use temporary synthetic workspaces. The GitLab pipeline runs the complete
+suite, Ruff and the release-content validator on a Linux container runner.
+Local validation results are recorded in
+[Current verification](docs/CURRENT_STATE.md); GitLab reports remote pipeline
+results separately.

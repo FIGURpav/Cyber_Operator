@@ -28,3 +28,22 @@ htmlcov/
 /output/
 /tmp/
 config.local.toml
+
+# Private runtime records and local tool state must stay outside shared source.
+*.jsonl
+*.pem
+*.key
+*.pfx
+*.p12
+*.sqlite
+*.sqlite3
+*.db
+cookies.txt
+cookies*.txt
+*.har
+/.codex/
+/.agents/
+/.idea/
+/.history/
+/intake/
+/deployment/
