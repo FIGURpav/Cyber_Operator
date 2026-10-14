@@ -219,7 +219,7 @@ checks. See [Findings and reporting](docs/FINDINGS_REPORTING.md).
   writes. Ordinary reports exclude secret values.
 
 PDF/DOCX report adapters and remote rendering services are not part of this
-release. The included operator guide is a separate Markdown document.
+release. The operator guide is available separately in Markdown and PDF formats.
 
 ## **Security & Operating Boundaries**
 
@@ -246,6 +246,8 @@ for the detailed contracts.
 
 Start with the **[English operator guide](docs/OPERATOR_GUIDE_EN.md)** for
 architecture, conversational setup, workflows, command references and diagrams.
+
+**[Download the English operator guide (PDF)](docs/pdf/Cyber-Operator_Operator_Guide_EN.pdf)** for Cyber-Operator **0.7.0**, added on **2026-10-14**. This is the review-draft edition dated 2026-10-13.
 
 Additional references:
 

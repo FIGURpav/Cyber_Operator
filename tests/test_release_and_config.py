@@ -119,3 +119,21 @@ def test_release_includes_gitlab_pipeline(tmp_path):
     pipeline = tmp_path / ".gitlab-ci.yml"
     pipeline.write_text("stages: [validate]\n")
     assert release_check.release_files(tmp_path) == [pipeline]
+
+
+def test_release_pdf_requires_reviewed_path_and_bytes(tmp_path):
+    import shutil
+
+    source = Path(__file__).parents[1]
+    relative = next(iter(release_check.REVIEWED_PDFS))
+    pdf = tmp_path / relative
+    pdf.parent.mkdir(parents=True)
+    shutil.copyfile(source / relative, pdf)
+    assert release_check.release_files(tmp_path) == [pdf]
+    pdf.write_bytes(pdf.read_bytes() + b'changed')
+    with pytest.raises(ValueError, match='checksum mismatch'):
+        release_check.release_files(tmp_path)
+    pdf.unlink()
+    (pdf.parent / 'unreviewed.pdf').write_bytes(b'%PDF-1.4')
+    with pytest.raises(ValueError, match='unreviewed file type'):
+        release_check.release_files(tmp_path)

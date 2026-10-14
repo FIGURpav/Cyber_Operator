@@ -1312,6 +1312,6 @@ Validation on 13 October 2026 used an isolated copy on a Linux filesystem under 
 - Ruff: **All checks passed**.
 - Release-content validation: **passed**, with no private runtime in the prepared source copy.
 - Synthetic CLI walkthrough: initialization, persisted answers, submission, configuration review, workspace selection, host, asset, objective, activity decision, evidence, HTTP observation, activity with finding, idempotent retry, amendment/review, relationship, projections, brief, SVG and ready HTML/JSON report.
-- Local links, contents anchors, code fences, JSON syntax and shell-example syntax were checked. The guide includes **10 Mermaid diagrams**. PDF editions are not included in this source repository.
+- Local links, contents anchors, code fences, JSON syntax and shell-example syntax were checked. The guide includes **10 Mermaid diagrams**. The [English PDF edition](pdf/Cyber-Operator_Operator_Guide_EN.pdf) for runtime **0.7.0** was added on **2026-10-14**; its cover retains the original review-draft date of 2026-10-13.
 
 No private user workspaces were opened and no real target was tested. The CLI walkthrough used temporary synthetic data and a current test window; example dates and shortened labels in the handbook must be replaced for actual use.

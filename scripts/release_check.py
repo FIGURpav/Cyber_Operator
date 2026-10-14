@@ -14,6 +14,10 @@ from pathlib import Path
 ROOT_FILES = {"README.md", "AGENTS.md", "CHANGELOG.md", "pyproject.toml", "uv.lock", ".gitignore", ".gitattributes", ".gitlab-ci.yml", "config.example.toml", "Cyber-Operator.code-workspace", "RELEASE_INVENTORY.json"}
 TREES = {"scripts", "tests", "templates", "docs", "knowledge_base", ".github"}
 IGNORED = {".venv", "__pycache__", ".pytest_cache", ".ruff_cache", ".git"}
+# Only this reviewed documentation export is permitted as binary content.
+REVIEWED_PDFS = {
+    "docs/pdf/Cyber-Operator_Operator_Guide_EN.pdf": "43e9a4e796d9925e3c6ef9e5919878d4f9f111942f55f86f44d3b2378692bd19",
+}
 TEXT_SUFFIXES = {".py", ".md", ".toml", ".lock", ".json", ".yml", ".yaml", ".svg", ".mmd", ".code-workspace"}
 PRIVATE_NAMES = {"TASK_CONTEXT.md", "ACTIVE_TASK", "engagement.json", "engagement_events.jsonl", "engagement_intake.json", "engagement_manifest.json", "credentials.jsonl", ".env"}
 MARKERS = re.compile(r"\b(?:" + "OS" + "AI" + r"\+?|" + "H" + "TB" + r"|Off" + "Sec" + r")\b|\bexam[-_](?:fast|no[-_]download)|[A-Z]:[\\/]Users[\\/][^\\/\s]+|/ho" + r"me/[^/\s]+/", re.IGNORECASE)
@@ -35,6 +39,11 @@ def release_files(root: Path) -> list[Path]:
             raise ValueError(f"unapproved release path: {relative}")
         if path.name in PRIVATE_NAMES or path.suffix in {".jsonl", ".pem", ".key", ".pfx", ".zip"} or any(part in {"private", "workspaces", "evidence", "private_knowledge"} for part in relative.parts):
             raise ValueError(f"private runtime data in release: {relative}")
+        if relative.as_posix() in REVIEWED_PDFS:
+            if hashlib.sha256(path.read_bytes()).hexdigest() != REVIEWED_PDFS[relative.as_posix()]:
+                raise ValueError(f"reviewed PDF checksum mismatch: {relative}")
+            files.append(path)
+            continue
         if path.suffix not in TEXT_SUFFIXES and not path.name.startswith("cyber-") and path.name not in ROOT_FILES:
             raise ValueError(f"unreviewed file type: {relative}")
         text = path.read_text(encoding="utf-8")
